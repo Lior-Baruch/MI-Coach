@@ -21,12 +21,33 @@ import subprocess
 import time
 from pathlib import Path
 
-MODEL_ID = os.environ.get("MODEL_ID", "meta-llama/Llama-3.2-1B-Instruct")
+MODEL_ID = os.environ.get("MODEL_ID", "meta-llama/Llama-3.2-1B")
 # HF baseline uses one adapter; default matches the thesis default (PTO iter 10).
 ADAPTER = os.environ.get("ADAPTER", str(Path(__file__).resolve().parents[1] / "assets" / "adapters" / "pto-iter10"))
 BASE_URL = os.environ.get("VLLM_URL", "http://localhost:8000/v1")
 MAX_NEW_TOKENS = 256
 CONCURRENCY = 8
+
+ASSETS = Path(__file__).resolve().parents[1] / "assets"
+SYSTEM_PROMPT = (ASSETS / "therapist_system_prompt.txt").read_text().strip()
+GREETING = (
+    "Hello, welcome to your first motivational session with me. My name is David and "
+    "I`m a professional motivational counselor. Can you start by telling me a little "
+    "bit about yourself and why are you here?"
+)
+# The adapters' ChatML markers are plain text (not special tokens), so generation
+# must stop on them explicitly.
+STOP = ["<|im_end|>", "<|im_start|>"]
+
+
+def build_messages(client_utterance: str) -> list[dict]:
+    """Session format the thesis adapters were trained on: therapist system prompt,
+    the counselor's standard greeting, then the client's (patient's) turn."""
+    return [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "assistant", "content": GREETING},
+        {"role": "user", "content": client_utterance},
+    ]
 
 # Client-role openers a trainee therapist would respond to — the served model plays
 # the therapist, so these exercise realistic MI turns of varying length.
@@ -77,9 +98,10 @@ def bench_vllm(model_name: str) -> list[dict]:
         t0 = time.perf_counter()
         resp = client.chat.completions.create(
             model=model_name,
-            messages=[{"role": "user", "content": prompt}],
+            messages=build_messages(prompt),
             max_tokens=MAX_NEW_TOKENS,
             temperature=0.7,
+            stop=STOP,
         )
         return time.perf_counter() - t0, resp.usage.completion_tokens
 
@@ -110,27 +132,31 @@ def bench_hf() -> list[dict]:
     import torch
     from transformers import AutoModelForCausalLM, AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     model = AutoModelForCausalLM.from_pretrained(MODEL_ID, dtype=torch.bfloat16, device_map="cuda")
     name = "HF Transformers (base)"
     if Path(ADAPTER, "adapter_config.json").is_file():
         from peft import PeftModel
+        # Adapter dir ships the tokenizer + the ChatML template it was trained with.
+        tokenizer = AutoTokenizer.from_pretrained(ADAPTER)
         model = PeftModel.from_pretrained(model, ADAPTER)
         name = "HF Transformers (+LoRA)"
+    else:
+        tokenizer = AutoTokenizer.from_pretrained(MODEL_ID)
     model.eval()
 
     def one_request(prompt: str) -> tuple[float, int]:
-        messages = [{"role": "user", "content": prompt}]
-        inputs = tokenizer.apply_chat_template(
-            messages, add_generation_prompt=True, return_tensors="pt"
+        enc = tokenizer.apply_chat_template(
+            build_messages(prompt), add_generation_prompt=True,
+            return_tensors="pt", return_dict=True,
         ).to("cuda")
         t0 = time.perf_counter()
         with torch.no_grad():
             out = model.generate(
-                inputs, max_new_tokens=MAX_NEW_TOKENS, do_sample=True, temperature=0.7,
+                **enc, max_new_tokens=MAX_NEW_TOKENS, do_sample=True, temperature=0.7,
                 pad_token_id=tokenizer.eos_token_id,
+                stop_strings=STOP, tokenizer=tokenizer,
             )
-        return time.perf_counter() - t0, out.shape[1] - inputs.shape[1]
+        return time.perf_counter() - t0, out.shape[1] - enc["input_ids"].shape[1]
 
     one_request(PROMPTS[0])  # warmup
     torch.cuda.reset_peak_memory_stats()

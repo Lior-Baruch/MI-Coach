@@ -18,7 +18,9 @@ cd "$(dirname "$0")/.."
 # venv binaries (ninja, zigcc, ...) must be visible to vLLM's JIT subprocesses.
 export PATH="$PWD/.venv/bin:$PATH"
 
-MODEL_ID="${MODEL_ID:-meta-llama/Llama-3.2-1B-Instruct}"
+# Thesis adapters were trained on the BASE model (not Instruct) with a custom
+# ChatML template shipped in each adapter dir.
+MODEL_ID="${MODEL_ID:-meta-llama/Llama-3.2-1B}"
 ADAPTER_DIR="${ADAPTER_DIR:-assets/adapters}"
 PORT="${PORT:-8000}"
 
@@ -55,6 +57,13 @@ if ((${#MODULES[@]})); then
   echo "Serving LoRA adapters: ${MODULES[*]}" >&2
 else
   echo "WARNING: no LoRA adapters under $ADAPTER_DIR — serving base model only." >&2
+fi
+
+# Base Llama-3.2-1B has no chat template; use the one the adapters were trained
+# with (identical across adapters).
+TEMPLATE=$(ls "$ADAPTER_DIR"/*/chat_template.jinja 2>/dev/null | head -1)
+if [[ -n "$TEMPLATE" ]]; then
+  LORA_ARGS+=(--chat-template "$TEMPLATE")
 fi
 
 exec .venv/bin/python -m vllm.entrypoints.openai.api_server \

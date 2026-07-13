@@ -1,28 +1,27 @@
 # assets/
 
-Files copied from the thesis repo (`Thesis_PTO_GRPO`, read-only reference) — each copied
-file carries a header comment noting its origin. Nothing here is imported from thesis paths
-at runtime.
+Thesis artifacts (from `Thesis_PTO_GRPO`, read-only reference). **Nothing in this
+directory is committed except this README** — the raw thesis trees include training
+data that must never reach the public repo.
 
-## adapters/ (not committed)
+## Layout
 
-Thesis LoRA adapters for `meta-llama/Llama-3.2-1B-Instruct`. Weights are gitignored.
-`scripts/serve.sh` serves every subdirectory here that contains an `adapter_config.json`
-as model `mi-coach-<subdir>`:
+| Path | What it is |
+|---|---|
+| `adapters/pto-iter10/` | **serving copy** — best PTO adapter (LA0, iteration 10), served as `mi-coach-pto-iter10` (default) |
+| `adapters/grpo-iter8/` | **serving copy** — best GRPO adapter (iteration 8), served as `mi-coach-grpo-iter8` |
+| `PTO/…_PTgreedy/` | raw thesis run (all iterations) — local reference only |
+| `GRPO/…_G8/` | raw thesis run (all iterations) — local reference only |
 
-| Directory | Served as | Notes |
-|---|---|---|
-| `adapters/pto-iter10/` | `mi-coach-pto-iter10` | **default** — best PTO adapter (LA0, iteration 10) |
-| `adapters/grpo-iter8/` | `mi-coach-grpo-iter8` | optional — best GRPO adapter (iteration 8) |
+The serving copies were taken from `<run>/iteration_<n>/adapter/` and contain
+`adapter_config.json`, `adapter_model.safetensors`, the tokenizer, and the ChatML
+`chat_template.jinja` the adapters were trained with (`scripts/serve.sh` passes it
+to vLLM automatically). The GRPO `ref/` sub-adapter (training-time reference policy)
+is not needed for inference and was not copied.
 
-To set up locally (thesis adapters live on Google Drive, symlinked as G: on Windows):
-
-```bash
-sudo mkdir -p /mnt/g && sudo mount -t drvfs G: /mnt/g
-THESIS_DATA="/mnt/g/My Drive/Thesis_PTO_GRPO/Exp3_PTO_GRPO/data"
-mkdir -p assets/adapters
-cp -r "$THESIS_DATA/pto_Exp3/<pto-iter10-adapter-dir>"  assets/adapters/pto-iter10
-cp -r "$THESIS_DATA/grpo_Exp3/<grpo-iter8-adapter-dir>" assets/adapters/grpo-iter8
-```
-
-Each copied directory should contain `adapter_config.json` + `adapter_model.safetensors`.
+Note: adapters were trained on **`meta-llama/Llama-3.2-1B`** (base, not Instruct),
+with roles patient=`user` / therapist=`assistant` and the expert-therapist system
+prompt in `therapist_system_prompt.txt` (copied from the thesis
+`Exp3_PTO_GRPO/code/system_prompts_builder.py`, CounselorPersonality "Good", name
+David). The ChatML markers (`<|im_start|>`, `<|im_end|>`) are plain text, not special
+tokens — always pass them as `stop` strings when generating.

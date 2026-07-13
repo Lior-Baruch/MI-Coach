@@ -51,15 +51,27 @@ exposed as its own model — `mi-coach-pto-iter10` (thesis default) and
 `mi-coach-grpo-iter8` — so you choose the adapter per request via the `model` field;
 the base model stays available under its Hugging Face id.
 
+The adapters were trained on base `meta-llama/Llama-3.2-1B` with the therapist system
+prompt in `assets/therapist_system_prompt.txt` and a ChatML template whose markers are
+plain text — pass them as `stop` strings:
+
 ```bash
-curl http://localhost:8000/v1/chat/completions \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "mi-coach-pto-iter10",
-    "messages": [{"role": "user", "content": "I know I should cut back on drinking, but it is the only thing that helps me unwind."}],
-    "max_tokens": 128
-  }'
+curl http://localhost:8000/v1/chat/completions -H "Content-Type: application/json" -d @- <<'EOF'
+{
+  "model": "mi-coach-pto-iter10",
+  "messages": [
+    {"role": "system", "content": "You are a motivational interviewing counselor named David. You partner with the patient to understand his problems. You are empathetic towards him and help the patient explore their ambivalence regarding behavioral change. You are non-judgmental while encouraging the patient to change. In your answer, please avoid repetitions and unnecessary loops in the conversation. In your answer, please avoid repeating expressions of gratitude or similar sentiments multiple times if you've already expressed them during the conversation. You should only end the session when at least one of the following conditions is met. If you need to end the session, write \"SESSION ENDED\" followed by the condition number: 1. If you believe that you have provided the appropriate treatment to the patient and have nothing else to advise in the current session.2. When time is up."},
+    {"role": "assistant", "content": "Hello, welcome to your first motivational session with me. My name is David and I`m a professional motivational counselor. Can you start by telling me a little bit about yourself and why are you here?"},
+    {"role": "user", "content": "Hi David. I have smoked for years and I know I should stop, but it is the only thing that helps me unwind."}
+  ],
+  "max_tokens": 200,
+  "stop": ["<|im_end|>", "<|im_start|>"]
+}
+EOF
 ```
+
+(The system prompt is the thesis expert-therapist prompt, also in
+`assets/therapist_system_prompt.txt`.)
 
 ## Benchmark
 
@@ -74,10 +86,22 @@ bash scripts/serve.sh
 
 ### Results
 
-*(pending — table produced by `bench/run_bench.py` goes here)*
+Llama-3.2-1B (bf16) + thesis LoRA adapters, RTX 5070 Ti (12 GB), WSL2, 8 MI practice
+prompts per config, 256 max new tokens, temperature 0.7 (2026-07-13):
 
-| Config | Tokens/s | p50 latency (s) | p95 latency (s) | Peak VRAM (MiB) | Requests |
-|---|---|---|---|---|---|
-| vLLM sequential | – | – | – | – | – |
-| vLLM concurrent x8 | – | – | – | – | – |
-| HF Transformers | – | – | – | – | – |
+| Config | Tokens/s | p50 latency (s) | p95 latency (s) | Peak VRAM (MiB) |
+|---|---|---|---|---|
+| HF Transformers + LoRA `pto-iter10` (sequential) | 46.0 | 3.70 | 5.12 | 2,450 |
+| vLLM + LoRA `pto-iter10` (sequential) | 154.7 | 0.30 | 1.04 | 11,406¹ |
+| vLLM + LoRA `pto-iter10` (concurrent ×8) | 657.8 | 0.37 | 1.30 | 11,406¹ |
+| vLLM + LoRA `grpo-iter8` (sequential) | 147.6 | 0.79 | 1.69 | 11,406¹ |
+| vLLM + LoRA `grpo-iter8` (concurrent ×8) | 911.1 | 0.89 | 1.79 | 11,406¹ |
+
+**vLLM delivers ~3.4× single-stream throughput over HF Transformers, and up to ~20×
+aggregate throughput with continuous batching** (911 vs 46 tokens/s).
+
+¹ vLLM preallocates 85% of VRAM up front (weights + paged KV cache sized for ~58
+concurrent 4k-token sequences); HF's number is the actual allocation for one sequence.
+Latency columns are not directly comparable across engines — completions are sampled and
+stop-string–terminated, so output lengths differ; tokens/s is the like-for-like metric.
+Raw runs: `bench/results/` (regenerate with `bench/run_bench.py`).
