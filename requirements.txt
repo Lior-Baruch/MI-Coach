@@ -42,6 +42,7 @@ fastar==0.11.0
 fastsafetensors==0.3.3
 filelock==3.29.7
 flashinfer-cubin==0.6.13
+flashinfer-jit-cache==0.6.13+cu130
 flashinfer-python==0.6.13
 frozenlist==1.8.0
 fsspec==2026.6.0
@@ -193,3 +194,4 @@ websockets==16.1
 xgrammar==0.2.3
 yarl==1.24.2
 z3-solver==4.15.4.0
+ziglang==0.16.0

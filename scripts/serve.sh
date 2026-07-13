@@ -15,6 +15,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# venv binaries (ninja, zigcc, ...) must be visible to vLLM's JIT subprocesses.
+export PATH="$PWD/.venv/bin:$PATH"
+
 MODEL_ID="${MODEL_ID:-meta-llama/Llama-3.2-1B-Instruct}"
 ADAPTER_DIR="${ADAPTER_DIR:-assets/adapters}"
 PORT="${PORT:-8000}"
@@ -32,6 +35,12 @@ fi
 if [[ -z "${CC:-}" && -x .venv/bin/zigcc ]] && ! command -v cc >/dev/null && ! command -v gcc >/dev/null; then
   export CC="$PWD/.venv/bin/zigcc"
   export CXX="$PWD/.venv/bin/zigcc"
+fi
+
+# No-sudo CUDA toolkit for FlashInfer's JIT/autotune (nvidia-cuda-nvcc wheel).
+if [[ -z "${CUDA_HOME:-}" && -x .venv/lib/python3.12/site-packages/nvidia/cu13/bin/nvcc ]]; then
+  export CUDA_HOME="$PWD/.venv/lib/python3.12/site-packages/nvidia/cu13"
+  export PATH="$CUDA_HOME/bin:$PATH"
 fi
 
 LORA_ARGS=()
