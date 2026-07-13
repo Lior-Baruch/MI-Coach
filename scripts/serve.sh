@@ -23,7 +23,7 @@ PORT="${PORT:-8000}"
 # not available"; modern WSL2 kernels (>= 4.19.121) support it, so opt in.
 export VLLM_WSL2_ENABLE_PIN_MEMORY="${VLLM_WSL2_ENABLE_PIN_MEMORY:-1}"
 
-# No-sudo FFmpeg fallback for torchcodec (see scripts/setup_ffmpeg_libs.sh).
+# No-sudo FFmpeg fallback for torchcodec (see scripts/setup_local_toolchain.sh).
 if [[ -d .venv/ffmpeg-libs ]]; then
   export LD_LIBRARY_PATH="$PWD/.venv/ffmpeg-libs:$PWD/.venv/lib/python3.12/site-packages/av.libs${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
 fi

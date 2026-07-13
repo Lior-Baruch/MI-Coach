@@ -27,15 +27,14 @@ uv pip install --python .venv/bin/python -r requirements.txt
 export HF_TOKEN=...   # keys via env vars only — never committed
 ```
 
-vLLM needs FFmpeg shared libraries at startup (via `torchcodec`). Either
-`sudo apt install ffmpeg`, or — no sudo needed — run the bundled fallback once:
+vLLM additionally needs FFmpeg shared libraries (via `torchcodec`) and a C compiler
+(Triton/Inductor JIT). Either `sudo apt install ffmpeg build-essential`, or — no sudo
+needed — run the bundled fallback once (FFmpeg libs from the PyAV wheel, `zig cc` from
+the ziglang wheel; `serve.sh` picks both up automatically):
 
 ```bash
-bash scripts/setup_ffmpeg_libs.sh   # symlinks the FFmpeg libs shipped inside the PyAV wheel
+bash scripts/setup_local_toolchain.sh
 ```
-
-If no C compiler is installed (Triton/Inductor JIT needs one), `serve.sh` automatically
-falls back to a `zig cc` shim from the `ziglang` wheel — or `sudo apt install build-essential`.
 
 Place the thesis LoRA adapters under `assets/adapters/` — `pto-iter10/` (default) and
 optionally `grpo-iter8/`. Adapter weights are not committed; see `assets/README.md`.
