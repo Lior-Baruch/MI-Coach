@@ -34,8 +34,11 @@ vLLM needs FFmpeg shared libraries at startup (via `torchcodec`). Either
 bash scripts/setup_ffmpeg_libs.sh   # symlinks the FFmpeg libs shipped inside the PyAV wheel
 ```
 
-Place the thesis LoRA adapter in `assets/adapter/` (adapter weights are not committed;
-see `assets/README.md`).
+If no C compiler is installed (Triton/Inductor JIT needs one), `serve.sh` automatically
+falls back to a `zig cc` shim from the `ziglang` wheel — or `sudo apt install build-essential`.
+
+Place the thesis LoRA adapters under `assets/adapters/` — `pto-iter10/` (default) and
+optionally `grpo-iter8/`. Adapter weights are not committed; see `assets/README.md`.
 
 ## Serve
 
@@ -43,14 +46,16 @@ see `assets/README.md`).
 bash scripts/serve.sh
 ```
 
-Starts vLLM on `http://localhost:8000/v1`. The LoRA adapter is exposed as model
-`mi-coach`; the base model stays available under its Hugging Face id.
+Starts vLLM on `http://localhost:8000/v1`. Each adapter under `assets/adapters/` is
+exposed as its own model — `mi-coach-pto-iter10` (thesis default) and
+`mi-coach-grpo-iter8` — so you choose the adapter per request via the `model` field;
+the base model stays available under its Hugging Face id.
 
 ```bash
 curl http://localhost:8000/v1/chat/completions \
   -H "Content-Type: application/json" \
   -d '{
-    "model": "mi-coach",
+    "model": "mi-coach-pto-iter10",
     "messages": [{"role": "user", "content": "I know I should cut back on drinking, but it is the only thing that helps me unwind."}],
     "max_tokens": 128
   }'

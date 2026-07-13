@@ -22,7 +22,8 @@ import time
 from pathlib import Path
 
 MODEL_ID = os.environ.get("MODEL_ID", "meta-llama/Llama-3.2-1B-Instruct")
-ADAPTER = os.environ.get("ADAPTER", str(Path(__file__).resolve().parents[1] / "assets" / "adapter"))
+# HF baseline uses one adapter; default matches the thesis default (PTO iter 10).
+ADAPTER = os.environ.get("ADAPTER", str(Path(__file__).resolve().parents[1] / "assets" / "adapters" / "pto-iter10"))
 BASE_URL = os.environ.get("VLLM_URL", "http://localhost:8000/v1")
 MAX_NEW_TOKENS = 256
 CONCURRENCY = 8
