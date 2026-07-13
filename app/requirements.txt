@@ -1,0 +1,5 @@
+# Runtime deps for the MI Coach app image only (vLLM runs in its own container).
+fastapi>=0.115
+uvicorn[standard]>=0.30
+gradio>=6
+httpx>=0.27

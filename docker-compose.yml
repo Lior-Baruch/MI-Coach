@@ -1,0 +1,52 @@
+# MI Coach: vLLM model server + FastAPI/Gradio app.
+#
+#   MODEL_ID=meta-llama/Llama-3.2-1B HF_TOKEN=... docker compose up
+#
+# Needs the NVIDIA Container Toolkit for GPU access. Adapters are mounted from
+# assets/adapters (not baked into any image).
+
+services:
+  vllm:
+    image: vllm/vllm-openai:v0.25.0
+    ports:
+      - "8000:8000"
+    environment:
+      HF_TOKEN: ${HF_TOKEN:-}
+      VLLM_WSL2_ENABLE_PIN_MEMORY: "1"   # harmless off WSL2; required on it
+    volumes:
+      - ./assets/adapters:/adapters:ro
+      - hf-cache:/root/.cache/huggingface
+    command: >
+      --model ${MODEL_ID:-meta-llama/Llama-3.2-1B}
+      --gpu-memory-utilization 0.85
+      --max-model-len 4096
+      --enable-lora
+      --lora-modules mi-coach-pto-iter10=/adapters/pto-iter10 mi-coach-grpo-iter8=/adapters/grpo-iter8
+      --chat-template /adapters/pto-iter10/chat_template.jinja
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    healthcheck:
+      test: ["CMD", "python3", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/v1/models')"]
+      interval: 10s
+      timeout: 5s
+      retries: 60
+      start_period: 120s
+
+  app:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      VLLM_URL: http://vllm:8000/v1
+      DEFAULT_MODEL: mi-coach-pto-iter10
+    depends_on:
+      vllm:
+        condition: service_healthy
+
+volumes:
+  hf-cache:

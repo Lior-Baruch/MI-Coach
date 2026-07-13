@@ -8,12 +8,17 @@ workshop paper) served as a real, benchmarked service.
 > researchers. It is **not therapy** and must not be used as a substitute for professional
 > mental-health care.
 
-## Status — Phase 1: Serve + benchmark
+## Status — Phase 2: API + UI + Docker
 
-Llama-3.2-1B + thesis LoRA adapter served via [vLLM](https://github.com/vllm-project/vllm)
-(OpenAI-compatible endpoint), benchmarked against plain HF Transformers.
-Later phases add a FastAPI/Gradio app, Docker, and a LangGraph agent layer with an
-LLM-as-a-Judge scoring panel (see `MI_Coach_Project_Plan.md`).
+- **Phase 1 (done):** Llama-3.2-1B + thesis LoRA adapters served via
+  [vLLM](https://github.com/vllm-project/vllm) (OpenAI-compatible endpoint), benchmarked
+  against plain HF Transformers (results below).
+- **Phase 2 (this):** FastAPI session API + Gradio practice UI (you play the patient),
+  Dockerfile + compose.
+- **Phase 3 (next):** LangGraph agent layer with an LLM-as-a-Judge scoring panel
+  (see `MI_Coach_Project_Plan.md`).
+
+![MI Coach practice UI](docs/ui.png)
 
 ## Setup
 
@@ -72,6 +77,30 @@ EOF
 
 (The system prompt is the thesis expert-therapist prompt, also in
 `assets/therapist_system_prompt.txt`.)
+
+## Practice app (FastAPI + Gradio)
+
+With the vLLM server running:
+
+```bash
+.venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
+```
+
+- **UI:** http://localhost:8080/ui — pick the adapter, chat as the patient.
+- **API:** `POST /sessions` (choose model) → `POST /sessions/{id}/message` →
+  `GET /sessions/{id}` history; OpenAPI docs at `/docs`; `GET /health`.
+  Sessions are in-memory (practice tool, not a clinical record store).
+
+## Docker
+
+The app has its own image; vLLM runs from the official `vllm/vllm-openai` image with
+the adapters mounted read-only. Requires the
+[NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html):
+
+```bash
+MODEL_ID=meta-llama/Llama-3.2-1B HF_TOKEN=... docker compose up --build
+# UI on http://localhost:8080/ui, raw vLLM endpoint on http://localhost:8000/v1
+```
 
 ## Benchmark
 

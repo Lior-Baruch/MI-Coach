@@ -8,10 +8,17 @@ for end users** (keep this disclaimer in the README).
 
 Full phase plan: `MI_Coach_Project_Plan.md` (repo root). Read it before any work.
 
-## Current phase: 1 — Serve + benchmark
-Goal: Llama-3.2-1B + thesis LoRA adapter served via vLLM (OpenAI-compatible endpoint),
-benchmarked against plain HF Transformers (tokens/s, p50/p95 latency, VRAM), results table
-in README. Nothing else — no UI, no agents, no Docker yet.
+## Current phase: 2 — API + UI + Docker
+Phase 1 (serve + benchmark) is done and pushed: vLLM serves both thesis adapters
+(mi-coach-pto-iter10 default, mi-coach-grpo-iter8) with results table in README.
+Phase 2 goal: FastAPI wrapper with session state; simple Gradio chat UI where the user
+plays the patient; Dockerfile (+ compose for server+UI); short demo GIF in README.
+Still zero OpenAI calls — no agents/judging until Phase 3.
+
+Key serving facts (learned in Phase 1): adapters trained on BASE Llama-3.2-1B;
+requests need assets/therapist_system_prompt.txt as system message, roles
+patient=user / therapist=assistant, and stop strings ["<|im_end|>", "<|im_start|>"]
+(ChatML markers are plain text, not special tokens).
 
 ## Environment
 - WSL2 Ubuntu on Windows, RTX 5070 Ti (12 GB VRAM), NVIDIA driver via Windows (verify `nvidia-smi`).
