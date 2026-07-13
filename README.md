@@ -23,8 +23,15 @@ Requirements: Linux or WSL2, NVIDIA GPU (developed on an RTX 5070 Ti, 12 GB), Py
 
 ```bash
 uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python vllm transformers accelerate peft openai numpy
+uv pip install --python .venv/bin/python -r requirements.txt
 export HF_TOKEN=...   # keys via env vars only — never committed
+```
+
+vLLM needs FFmpeg shared libraries at startup (via `torchcodec`). Either
+`sudo apt install ffmpeg`, or — no sudo needed — run the bundled fallback once:
+
+```bash
+bash scripts/setup_ffmpeg_libs.sh   # symlinks the FFmpeg libs shipped inside the PyAV wheel
 ```
 
 Place the thesis LoRA adapter in `assets/adapter/` (adapter weights are not committed;
