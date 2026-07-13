@@ -31,3 +31,6 @@ bench/results/
 # Logs
 *.log
 logs/
+
+# Claude Code runtime state
+.claude/scheduled_tasks.lock
