@@ -1,0 +1,33 @@
+# Environments / secrets — keys via env vars only, never committed
+.env
+.env.*
+*.key
+*.pem
+
+# Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Model weights — adapters are copied locally, not committed (large binaries)
+assets/adapter/
+*.safetensors
+*.gguf
+*.bin
+
+# Benchmark artifacts (raw runs; the summary table goes in README)
+bench/results/
+
+# Editors / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Logs
+*.log
+logs/
