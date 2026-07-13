@@ -18,7 +18,7 @@ workshop paper) served as a real, benchmarked service.
 - **Phase 3 (next):** LangGraph agent layer with an LLM-as-a-Judge scoring panel
   (see `MI_Coach_Project_Plan.md`).
 
-![MI Coach practice UI](docs/ui.png)
+![MI Coach practice session demo](docs/demo.gif)
 
 ## Setup
 
