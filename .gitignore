@@ -38,3 +38,8 @@ logs/
 # Claude Code runtime state
 .claude/scheduled_tasks.lock
 !assets/thesis/
+
+# Eval runs — only the canonical latest results are tracked
+eval/results/*
+!eval/results/eval-latest.json
+!eval/results/eval-latest.md

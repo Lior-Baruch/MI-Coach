@@ -18,6 +18,7 @@ Budget: every OpenAI call is gpt-4o-mini; a 5-turn demo session costs ~a cent.
 """
 
 import importlib.util
+import json
 import os
 from pathlib import Path
 from typing import TypedDict
@@ -75,18 +76,41 @@ DEFAULT_REPORT_QUESTIONNAIRES = ["Q2", "MITI"]
 _NESTED = {"MITI", "PCT", "MICI"}
 
 
-def default_patient_persona() -> str:
-    """Thesis patient persona used for auto-demo: Emma, 61, long-time smoker,
-    tried to quit before, warms up as the session progresses."""
+# Thesis patient-persona dimensions (system_prompts_builder.PatientPersonality).
+PERSONA_OPTIONS = {
+    "gender": ["Female", "Male"],
+    "age": [61, 27],
+    "problem": ["Smoking", "Obesity"],
+    "problem_time": ["ManyYears", "FewMonths"],
+    "tried_to_solve": ["ManyTimes", "Never"],
+    "cooperation": ["StartLowAndChangesToHigh", "High", "Low"],
+}
+
+
+def build_patient_persona(
+    gender: str = "Female",
+    age: int = 61,
+    problem: str = "Smoking",
+    problem_time: str = "ManyYears",
+    tried_to_solve: str = "ManyTimes",
+    cooperation: str = "StartLowAndChangesToHigh",
+) -> str:
+    """Build a thesis patient system prompt from named permutation choices."""
     p = prompts_builder.PatientPersonality
     return p.build_system_prompt(
-        gender=p.Gender.Female,
-        problem=p.Problem.Smoking,
-        problem_time=p.ProblemTime.ManyYears,
-        tried_to_solve=p.TriedToSolve.ManyTimes,
-        cooperation_level=p.CooperationLevel.StartLowAndChangesToHigh,
-        age_value=61,
+        gender=p.Gender[gender],
+        problem=p.Problem[problem],
+        problem_time=p.ProblemTime[problem_time],
+        tried_to_solve=p.TriedToSolve[tried_to_solve],
+        cooperation_level=p.CooperationLevel[cooperation],
+        age_value=int(age),
     )["system_prompt"]
+
+
+def default_patient_persona() -> str:
+    """Auto-demo default: Emma, 61, long-time smoker, tried to quit before,
+    warms up as the session progresses."""
+    return build_patient_persona()
 
 
 class SessionState(TypedDict, total=False):
@@ -187,31 +211,52 @@ def patient_node(state: SessionState) -> dict:
             "session_ended": ended}
 
 
+_ASSESSMENT_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "required": ["overall_rating", "summary", "strengths", "growth_areas", "tip"],
+    "properties": {
+        "overall_rating": {"type": "integer", "minimum": 1, "maximum": 5,
+                           "description": "Overall MI performance of the therapist, 1-5"},
+        "summary": {"type": "string", "description": "3-4 sentence overall review of the therapist"},
+        "strengths": {"type": "array", "items": {"type": "string"}, "description": "2-3 strengths"},
+        "growth_areas": {"type": "array", "items": {"type": "string"}, "description": "2-3 growth areas"},
+        "tip": {"type": "string", "description": "One concrete, actionable tip for the next session"},
+    },
+}
+
+
 def report_node(state: SessionState) -> dict:
     conv = transcript(state["messages"])
     selected = state.get("report_questionnaires") or DEFAULT_REPORT_QUESTIONNAIRES
     results = {name: _judge_named(name, conv) for name in selected}
     per_turn = [t["means"] for t in state.get("turn_scores", [])]
     score_lines = "\n".join(
-        f"{name} ({QUESTIONNAIRES[name][1]}): " + str(r.get("globals", r["scores"]))
+        f"{name} ({QUESTIONNAIRES[name][1]}): mean {r['mean']} | " + str(r.get("globals", r["scores"]))
         + (f" | behavior counts: {r['behaviors']}" if "behaviors" in r else "")
         for name, r in results.items()
     )
-    narrative = _openai.chat.completions.create(
+    # Overall assessment: a reviewer pass over the transcript AND the judges' outputs.
+    resp = _openai.chat.completions.create(
         model=JUDGE_MODEL,
         messages=[{"role": "user", "content":
-            "You are an MI (Motivational Interviewing) supervisor. Based on this practice-session "
-            "transcript and its questionnaire scores, write a concise feedback report (<= 150 words) "
-            "on the THERAPIST's MI performance: 2-3 strengths, 2-3 growth areas, one concrete tip. "
-            f"\n\nTranscript:\n{conv}\n\nScores:\n{score_lines}"}],
-        max_tokens=400,
+            "You are a senior MI (Motivational Interviewing) supervisor reviewing a practice "
+            "session. You are given the transcript and the questionnaire scores produced by "
+            "independent judges. Weigh both — where the transcript and the scores disagree, "
+            "say so. Review the THERAPIST only.\n\n"
+            f"Transcript:\n{conv}\n\nJudge scores:\n{score_lines}"
+            + (f"\n\nPer-turn score trajectory: {per_turn}" if per_turn else "")}],
+        response_format={"type": "json_schema", "json_schema": {
+            "name": "mi_overall_assessment", "strict": True, "schema": _ASSESSMENT_SCHEMA}},
+        max_tokens=600,
         temperature=0.3,
-    ).choices[0].message.content.strip()
+    )
+    assessment = json.loads(resp.choices[0].message.content)
     return {"report": {
         "results": results,
         "means": {name: r["mean"] for name, r in results.items()},
         "per_turn_means": per_turn,
-        "narrative": narrative,
+        "assessment": assessment,
     }}
 
 
@@ -234,6 +279,18 @@ def build_turn_graph():
     return g.compile()
 
 
+def build_patient_turn_graph():
+    """Human-plays-therapist mode: the simulated patient answers the human's
+    therapist turn, then the judges score the (human) therapist so far."""
+    g = StateGraph(SessionState)
+    g.add_node("patient", patient_node)
+    g.add_node("judge_turn", judge_turn_node)
+    g.add_edge(START, "patient")
+    g.add_edge("patient", "judge_turn")
+    g.add_edge("judge_turn", END)
+    return g.compile()
+
+
 def build_demo_graph():
     g = StateGraph(SessionState)
     g.add_node("patient", patient_node)
@@ -249,6 +306,7 @@ def build_demo_graph():
 
 
 turn_graph = build_turn_graph()
+patient_turn_graph = build_patient_turn_graph()
 demo_graph = build_demo_graph()
 
 
@@ -269,6 +327,22 @@ def run_turn(
     return turn_graph.invoke({
         "messages": messages,
         "model": model,
+        "turn_scores": turn_scores,
+        "turn_questionnaires": turn_questionnaires or DEFAULT_TURN_QUESTIONNAIRES,
+    })
+
+
+def run_patient_turn(
+    messages: list[dict],
+    patient_system_prompt: str,
+    turn_scores: list[dict],
+    turn_questionnaires: list[str] | None = None,
+) -> SessionState:
+    """One human-therapist turn (therapist message already appended): the
+    simulated patient replies, then the judges score the human's therapy."""
+    return patient_turn_graph.invoke({
+        "messages": messages,
+        "patient_system_prompt": patient_system_prompt,
         "turn_scores": turn_scores,
         "turn_questionnaires": turn_questionnaires or DEFAULT_TURN_QUESTIONNAIRES,
     })

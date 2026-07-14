@@ -41,6 +41,29 @@ schemas — no free-text parsing. The simulated patient uses the thesis persona 
 one call per selected instrument per judged point (a default scored demo session costs
 about a cent).
 
+## Training-iteration evaluation
+
+Every checkpoint of both methods was evaluated in the deployed system with
+`eval/run_eval.py`: 3 auto-demo sessions per checkpoint (fixed thesis patient persona),
+scored per turn with Q1 and at session end with Q2 + MITI (gpt-4o-mini judge):
+
+![Judge scores vs training iteration](docs/eval_scores.png)
+
+Both post-training methods clearly improve over the base model, and the checkpoints
+this evaluation ranks best — **PTO iteration 10** and **GRPO iteration 8** — are exactly
+the checkpoints the thesis evaluation selected:
+
+| Checkpoint | Q1 (per-turn) | Q2 (17 items) | MITI globals |
+|---|---|---|---|
+| base Llama-3.2-1B | 2.58 ± 0.23 | 3.49 ± 0.78 | 3.08 ± 0.38 |
+| PTO iter 10 (best) | 3.49 ± 0.30 | **4.43 ± 0.24** | **4.25 ± 0.43** |
+| GRPO iter 8 (best) | **3.78 ± 0.14** | 4.29 ± 0.00 | **4.33 ± 0.29** |
+
+Full per-iteration table in `eval/results/`. Honest caveats: the judge is an LLM,
+sessions are short (3 patient turns) and sampled, and n=3 per checkpoint — error bars
+are wide. This reproduces the *shape* of the thesis evaluation in the deployed system;
+it is not a re-run of the thesis experiments.
+
 ## Setup
 
 Requirements: Linux or WSL2, NVIDIA GPU (developed on an RTX 5070 Ti, 12 GB), Python 3.12,
@@ -110,14 +133,21 @@ With the vLLM server running:
 .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
 
-- **UI:** http://localhost:8080/ui — pick the method (PTO/GRPO/base) and training
-  iteration (thesis-best marked ★), choose which questionnaires judge live each turn
-  and which run in the final report, chat as the patient, watch the live score panel;
-  *End session → report* for the full MI feedback report; *Auto-demo* to watch a
-  simulated patient session.
-- **API:** `POST /sessions` (choose model) → `POST /sessions/{id}/message` (returns the
-  therapist reply + per-turn judge score) → `POST /sessions/{id}/report`;
-  `POST /demo` runs a full simulated session. OpenAPI docs at `/docs`; `GET /health`.
+- **UI:** http://localhost:8080/ui —
+  - **Play either role**: as the *patient* the fine-tuned model counsels you; as the
+    *therapist* a simulated patient (thesis persona, configurable: problem, cooperation
+    level, age, …) responds and **the judges score you** — that's the "coach" in MI Coach.
+  - Pick the method (PTO/GRPO/base) and training iteration (thesis-best marked ★), and
+    choose which questionnaires judge live each turn vs. in the final report.
+  - Live score timeline chart; *End session → report* for per-instrument scores plus an
+    **overall assessment** (a reviewer model weighs the transcript *and* the judges'
+    scores: rating /5, strengths, growth areas, one concrete tip).
+  - **Compare (A/B) tab**: send the same patient message to two checkpoints side by side.
+  - Export any session as markdown (UI button or `GET /sessions/{id}/export`).
+- **API:** `POST /sessions` (model, your role, persona, questionnaires) →
+  `POST /sessions/{id}/message` (returns the reply + per-turn judge scores) →
+  `POST /sessions/{id}/report`; `POST /demo` runs a full simulated session.
+  OpenAPI docs at `/docs`; `GET /health`.
   Sessions are in-memory (practice tool, not a clinical record store).
 - Set `OPENAI_API_KEY` (e.g. in `.env`) to enable judging; without it the app degrades
   to plain chat.
