@@ -32,12 +32,14 @@ graph LR
     J -->|session end| R[report node<br/>Q2 + MITI + supervisor narrative]
 ```
 
-Judging uses the thesis evaluation stack (`assets/thesis/questionnaires.py`): per-turn
-**Q1** (5-item satisfaction), and at session end **Q2** (17 items) plus **MITI**
-(MI Treatment Integrity globals + behavior counts), all via OpenAI structured outputs
-against the thesis JSON schemas — no free-text parsing. The simulated patient uses the
-thesis persona prompts (`assets/thesis/system_prompts_builder.py`). All judge/patient
-calls are gpt-4o-mini; a full scored demo session costs about a cent.
+Judging uses the thesis evaluation stack (`assets/thesis/questionnaires.py`) with
+**selectable instruments** — Q1, Q2, WAI-SR, CSQ-8, MI-SAT, MITI, PCT, MICI — chosen
+independently for the live per-turn judge (default Q1) and the end-of-session report
+(default Q2 + MITI), all via OpenAI structured outputs against the thesis JSON
+schemas — no free-text parsing. The simulated patient uses the thesis persona prompts
+(`assets/thesis/system_prompts_builder.py`). All judge/patient calls are gpt-4o-mini;
+one call per selected instrument per judged point (a default scored demo session costs
+about a cent).
 
 ## Setup
 
@@ -71,9 +73,12 @@ bash scripts/serve.sh
 ```
 
 Starts vLLM on `http://localhost:8000/v1`. Each adapter under `assets/adapters/` is
-exposed as its own model — `mi-coach-pto-iter10` (thesis default) and
-`mi-coach-grpo-iter8` — so you choose the adapter per request via the `model` field;
-the base model stays available under its Hugging Face id.
+exposed as its own model (`mi-coach-<method>-iter<N>`); run
+`bash scripts/link_adapters.sh` once to link **every training iteration of both
+methods** (PTO 1-10, GRPO 1-10 — thesis-best: **PTO iter 10**, **GRPO iter 8**), so you
+can compare any checkpoint per request via the `model` field. The base model stays
+available under its Hugging Face id. LoRA swapping is cheap: vLLM keeps 4 adapters on
+GPU and LRU-caches the rest in RAM.
 
 The adapters were trained on base `meta-llama/Llama-3.2-1B` with the therapist system
 prompt in `assets/therapist_system_prompt.txt` and a ChatML template whose markers are
@@ -105,9 +110,11 @@ With the vLLM server running:
 .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
 
-- **UI:** http://localhost:8080/ui — pick the adapter, chat as the patient, watch the
-  live score panel; *End session → report* for the full MI feedback report;
-  *Auto-demo* to watch a simulated patient session.
+- **UI:** http://localhost:8080/ui — pick the method (PTO/GRPO/base) and training
+  iteration (thesis-best marked ★), choose which questionnaires judge live each turn
+  and which run in the final report, chat as the patient, watch the live score panel;
+  *End session → report* for the full MI feedback report; *Auto-demo* to watch a
+  simulated patient session.
 - **API:** `POST /sessions` (choose model) → `POST /sessions/{id}/message` (returns the
   therapist reply + per-turn judge score) → `POST /sessions/{id}/report`;
   `POST /demo` runs a full simulated session. OpenAPI docs at `/docs`; `GET /health`.

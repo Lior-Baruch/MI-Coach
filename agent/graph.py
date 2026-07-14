@@ -58,6 +58,22 @@ STOP = ["<|im_end|>", "<|im_start|>"]  # ChatML markers are plain text for the a
 _vllm = OpenAI(base_url=VLLM_URL, api_key="unused")
 _openai = OpenAI()  # OPENAI_API_KEY from env
 
+# Selectable judge instruments (thesis questionnaires.py). Key -> (ID, blurb).
+QUESTIONNAIRES = {
+    "Q1": (questionnaires.QuestionnaireID.Q1, "Satisfaction, 5 items (thesis primary)"),
+    "Q2": (questionnaires.QuestionnaireID.Q2, "Therapist behaviors, 17 items (thesis primary)"),
+    "WAI-SR": (questionnaires.QuestionnaireID.WAI_SR, "Working Alliance Inventory (short)"),
+    "CSQ-8": (questionnaires.QuestionnaireID.CSQ8, "Client Satisfaction Questionnaire"),
+    "MI-SAT": (questionnaires.QuestionnaireID.MI_SAT, "MI intervention satisfaction"),
+    "MITI": (questionnaires.QuestionnaireID.MITI, "MI Treatment Integrity: globals + behavior counts"),
+    "PCT": (questionnaires.QuestionnaireID.PCT, "Patient change talk / readiness"),
+    "MICI": (questionnaires.QuestionnaireID.MICI, "MI-inconsistent behaviors (lower is better)"),
+}
+DEFAULT_TURN_QUESTIONNAIRES = ["Q1"]
+DEFAULT_REPORT_QUESTIONNAIRES = ["Q2", "MITI"]
+# Nested instruments take a change_goal hint in their prompts.
+_NESTED = {"MITI", "PCT", "MICI"}
+
 
 def default_patient_persona() -> str:
     """Thesis patient persona used for auto-demo: Emma, 61, long-time smoker,
@@ -76,7 +92,9 @@ def default_patient_persona() -> str:
 class SessionState(TypedDict, total=False):
     messages: list[dict]          # therapist-perspective: patient=user, therapist=assistant
     model: str                    # served therapist model (adapter) name
-    turn_scores: list[dict]       # one entry per therapist turn (Q1)
+    turn_questionnaires: list[str]    # QUESTIONNAIRES keys judged every turn
+    report_questionnaires: list[str]  # QUESTIONNAIRES keys judged at session end
+    turn_scores: list[dict]       # one entry per therapist turn
     report: dict | None
     patient_system_prompt: str    # auto-demo only
     max_patient_turns: int        # auto-demo only
@@ -128,12 +146,26 @@ def therapist_node(state: SessionState) -> dict:
             "session_ended": ended}
 
 
+def _judge_named(name: str, conversation: str) -> dict:
+    """Judge one named instrument; returns a UI/report-friendly dict."""
+    qid = QUESTIONNAIRES[name][0]
+    kwargs = {"change_goal": "the patient's behavioral change goal"} if name in _NESTED else {}
+    result = _judge(qid, conversation, **kwargs)
+    out = {"mean": round(result["mean_score"], 2), "scores": result["scores_dict"]}
+    if "globals" in result:
+        out["globals"] = result["globals"]
+        out["behaviors"] = result["behaviors"]
+    return out
+
+
 def judge_turn_node(state: SessionState) -> dict:
-    result = _judge(questionnaires.QuestionnaireID.Q1, transcript(state["messages"]))
+    conv = transcript(state["messages"])
+    selected = state.get("turn_questionnaires") or DEFAULT_TURN_QUESTIONNAIRES
+    results = {name: _judge_named(name, conv) for name in selected}
     entry = {
         "therapist_turns": sum(1 for m in state["messages"] if m["role"] == "assistant"),
-        "q1_mean": round(result["mean_score"], 2),
-        "scores": result["scores_dict"],
+        "means": {name: r["mean"] for name, r in results.items()},
+        "results": results,
     }
     return {"turn_scores": state.get("turn_scores", []) + [entry]}
 
@@ -157,27 +189,28 @@ def patient_node(state: SessionState) -> dict:
 
 def report_node(state: SessionState) -> dict:
     conv = transcript(state["messages"])
-    q2 = _judge(questionnaires.QuestionnaireID.Q2, conv)
-    miti = _judge(questionnaires.QuestionnaireID.MITI, conv, change_goal="the patient's behavioral change goal")
-    per_turn = [t["q1_mean"] for t in state.get("turn_scores", [])]
+    selected = state.get("report_questionnaires") or DEFAULT_REPORT_QUESTIONNAIRES
+    results = {name: _judge_named(name, conv) for name in selected}
+    per_turn = [t["means"] for t in state.get("turn_scores", [])]
+    score_lines = "\n".join(
+        f"{name} ({QUESTIONNAIRES[name][1]}): " + str(r.get("globals", r["scores"]))
+        + (f" | behavior counts: {r['behaviors']}" if "behaviors" in r else "")
+        for name, r in results.items()
+    )
     narrative = _openai.chat.completions.create(
         model=JUDGE_MODEL,
         messages=[{"role": "user", "content":
             "You are an MI (Motivational Interviewing) supervisor. Based on this practice-session "
             "transcript and its questionnaire scores, write a concise feedback report (<= 150 words) "
             "on the THERAPIST's MI performance: 2-3 strengths, 2-3 growth areas, one concrete tip. "
-            f"\n\nTranscript:\n{conv}\n\nQ2 item scores (1-5): {q2['scores_dict']}\n"
-            f"MITI globals (1-5): {miti['globals']}\nMITI behavior counts: {miti['behaviors']}"}],
+            f"\n\nTranscript:\n{conv}\n\nScores:\n{score_lines}"}],
         max_tokens=400,
         temperature=0.3,
     ).choices[0].message.content.strip()
     return {"report": {
-        "q2_mean": round(q2["mean_score"], 2),
-        "q2_scores": q2["scores_dict"],
-        "miti_globals": miti["globals"],
-        "miti_behaviors": miti["behaviors"],
-        "miti_global_mean": round(miti["mean_score"], 2),
-        "per_turn_q1": per_turn,
+        "results": results,
+        "means": {name: r["mean"] for name, r in results.items()},
+        "per_turn_means": per_turn,
         "narrative": narrative,
     }}
 
@@ -226,22 +259,48 @@ def initial_messages() -> list[dict]:
     ]
 
 
-def run_turn(messages: list[dict], model: str, turn_scores: list[dict]) -> SessionState:
+def run_turn(
+    messages: list[dict],
+    model: str,
+    turn_scores: list[dict],
+    turn_questionnaires: list[str] | None = None,
+) -> SessionState:
     """One interactive practice turn (patient message already appended)."""
-    return turn_graph.invoke({"messages": messages, "model": model, "turn_scores": turn_scores})
+    return turn_graph.invoke({
+        "messages": messages,
+        "model": model,
+        "turn_scores": turn_scores,
+        "turn_questionnaires": turn_questionnaires or DEFAULT_TURN_QUESTIONNAIRES,
+    })
 
 
-def run_report(messages: list[dict], turn_scores: list[dict]) -> dict:
-    return report_node({"messages": messages, "turn_scores": turn_scores})["report"]
+def run_report(
+    messages: list[dict],
+    turn_scores: list[dict],
+    report_questionnaires: list[str] | None = None,
+) -> dict:
+    return report_node({
+        "messages": messages,
+        "turn_scores": turn_scores,
+        "report_questionnaires": report_questionnaires or DEFAULT_REPORT_QUESTIONNAIRES,
+    })["report"]
 
 
-def run_demo(model: str, max_patient_turns: int = 4, patient_system_prompt: str | None = None) -> SessionState:
+def run_demo(
+    model: str,
+    max_patient_turns: int = 4,
+    patient_system_prompt: str | None = None,
+    turn_questionnaires: list[str] | None = None,
+    report_questionnaires: list[str] | None = None,
+) -> SessionState:
     """Full simulated session: patient-sim <-> therapist with per-turn scoring + report."""
     return demo_graph.invoke(
         {
             "messages": initial_messages(),
             "model": model,
             "turn_scores": [],
+            "turn_questionnaires": turn_questionnaires or DEFAULT_TURN_QUESTIONNAIRES,
+            "report_questionnaires": report_questionnaires or DEFAULT_REPORT_QUESTIONNAIRES,
             "patient_system_prompt": patient_system_prompt or default_patient_persona(),
             "max_patient_turns": max_patient_turns,
             "session_ended": False,

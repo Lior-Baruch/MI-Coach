@@ -66,9 +66,13 @@ if [[ -n "$TEMPLATE" ]]; then
   LORA_ARGS+=(--chat-template "$TEMPLATE")
 fi
 
+# --max-loras: adapters resident on GPU at once; --max-cpu-loras: LRU cache in
+# RAM so switching among the 20 iteration adapters doesn't re-read from disk.
 exec .venv/bin/python -m vllm.entrypoints.openai.api_server \
   --model "$MODEL_ID" \
   --port "$PORT" \
   --gpu-memory-utilization 0.85 \
   --max-model-len 4096 \
+  --max-loras 4 \
+  --max-cpu-loras 24 \
   "${LORA_ARGS[@]}"

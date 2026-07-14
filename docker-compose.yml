@@ -12,17 +12,15 @@ services:
       - "8000:8000"
     environment:
       HF_TOKEN: ${HF_TOKEN:-}
+      MODEL_ID: ${MODEL_ID:-meta-llama/Llama-3.2-1B}
       VLLM_WSL2_ENABLE_PIN_MEMORY: "1"   # harmless off WSL2; required on it
     volumes:
-      - ./assets/adapters:/adapters:ro
+      # Whole assets tree (read-only) so the adapter symlinks resolve; every
+      # iteration under assets/adapters/ is registered by the entrypoint.
+      - ./assets:/assets:ro
+      - ./scripts/vllm_entrypoint.sh:/vllm_entrypoint.sh:ro
       - hf-cache:/root/.cache/huggingface
-    command: >
-      --model ${MODEL_ID:-meta-llama/Llama-3.2-1B}
-      --gpu-memory-utilization 0.85
-      --max-model-len 4096
-      --enable-lora
-      --lora-modules mi-coach-pto-iter10=/adapters/pto-iter10 mi-coach-grpo-iter8=/adapters/grpo-iter8
-      --chat-template /adapters/pto-iter10/chat_template.jinja
+    entrypoint: ["bash", "/vllm_entrypoint.sh"]
     deploy:
       resources:
         reservations:
