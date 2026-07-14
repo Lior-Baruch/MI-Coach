@@ -8,12 +8,14 @@ for end users** (keep this disclaimer in the README).
 
 Full phase plan: `MI_Coach_Project_Plan.md` (repo root). Read it before any work.
 
-## Current phase: 2 — API + UI + Docker
-Phase 1 (serve + benchmark) is done and pushed: vLLM serves both thesis adapters
-(mi-coach-pto-iter10 default, mi-coach-grpo-iter8) with results table in README.
-Phase 2 goal: FastAPI wrapper with session state; simple Gradio chat UI where the user
-plays the patient; Dockerfile (+ compose for server+UI); short demo GIF in README.
-Still zero OpenAI calls — no agents/judging until Phase 3.
+## Current phase: 3 — LangGraph agent layer
+Phases 1-2 done and pushed: vLLM serves both adapters (results table in README);
+FastAPI session API + Gradio UI + Docker compose stack verified end-to-end (demo GIF).
+Phase 3 goal: LangGraph graph — therapist node (local vLLM) → optional patient-sim node
+(gpt-4o-mini) → judge node (gpt-4o-mini + thesis questionnaires, assets/thesis/) →
+session feedback report. Two modes: interactive practice (human patient) and auto-demo
+(simulated patient). Live per-turn scoring panel in the UI.
+OpenAI budget: gpt-4o-mini only, few calls per session; OPENAI_API_KEY lives in .env.
 
 Key serving facts (learned in Phase 1): adapters trained on BASE Llama-3.2-1B;
 requests need assets/therapist_system_prompt.txt as system message, roles

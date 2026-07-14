@@ -44,6 +44,7 @@ services:
     environment:
       VLLM_URL: http://vllm:8000/v1
       DEFAULT_MODEL: mi-coach-pto-iter10
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}   # enables live judge/report/demo (from .env)
     depends_on:
       vllm:
         condition: service_healthy

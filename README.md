@@ -8,17 +8,36 @@ workshop paper) served as a real, benchmarked service.
 > researchers. It is **not therapy** and must not be used as a substitute for professional
 > mental-health care.
 
-## Status — Phase 2: API + UI + Docker
+## Status — Phase 3: LangGraph agent layer
 
 - **Phase 1 (done):** Llama-3.2-1B + thesis LoRA adapters served via
   [vLLM](https://github.com/vllm-project/vllm) (OpenAI-compatible endpoint), benchmarked
   against plain HF Transformers (results below).
-- **Phase 2 (this):** FastAPI session API + Gradio practice UI (you play the patient),
+- **Phase 2 (done):** FastAPI session API + Gradio practice UI (you play the patient),
   Dockerfile + compose.
-- **Phase 3 (next):** LangGraph agent layer with an LLM-as-a-Judge scoring panel
-  (see `MI_Coach_Project_Plan.md`).
+- **Phase 3 (this):** [LangGraph](https://github.com/langchain-ai/langgraph) agent —
+  every therapist turn is scored live by an LLM-as-a-Judge (gpt-4o-mini + the thesis
+  questionnaires), sessions end with an MI feedback report, and an auto-demo mode runs
+  a simulated patient.
 
 ![MI Coach practice session demo](docs/demo.gif)
+
+## Agent layer
+
+```mermaid
+graph LR
+    P[patient turn<br/>human or gpt-4o-mini sim] --> T[therapist node<br/>local vLLM + LoRA]
+    T --> J[judge node<br/>gpt-4o-mini + thesis Q1]
+    J -->|auto-demo loop| P
+    J -->|session end| R[report node<br/>Q2 + MITI + supervisor narrative]
+```
+
+Judging uses the thesis evaluation stack (`assets/thesis/questionnaires.py`): per-turn
+**Q1** (5-item satisfaction), and at session end **Q2** (17 items) plus **MITI**
+(MI Treatment Integrity globals + behavior counts), all via OpenAI structured outputs
+against the thesis JSON schemas — no free-text parsing. The simulated patient uses the
+thesis persona prompts (`assets/thesis/system_prompts_builder.py`). All judge/patient
+calls are gpt-4o-mini; a full scored demo session costs about a cent.
 
 ## Setup
 
@@ -86,10 +105,15 @@ With the vLLM server running:
 .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
 ```
 
-- **UI:** http://localhost:8080/ui — pick the adapter, chat as the patient.
-- **API:** `POST /sessions` (choose model) → `POST /sessions/{id}/message` →
-  `GET /sessions/{id}` history; OpenAPI docs at `/docs`; `GET /health`.
+- **UI:** http://localhost:8080/ui — pick the adapter, chat as the patient, watch the
+  live score panel; *End session → report* for the full MI feedback report;
+  *Auto-demo* to watch a simulated patient session.
+- **API:** `POST /sessions` (choose model) → `POST /sessions/{id}/message` (returns the
+  therapist reply + per-turn judge score) → `POST /sessions/{id}/report`;
+  `POST /demo` runs a full simulated session. OpenAPI docs at `/docs`; `GET /health`.
   Sessions are in-memory (practice tool, not a clinical record store).
+- Set `OPENAI_API_KEY` (e.g. in `.env`) to enable judging; without it the app degrades
+  to plain chat.
 
 ## Docker
 
