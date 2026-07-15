@@ -2,119 +2,728 @@
   "raw": [
     {
       "model": "mi-coach-pto-iter1",
-      "session": 0,
+      "persona": "emma-smoking",
+      "session": 1,
       "q1_turn_means": [
-        3.2,
-        2.4,
-        1.6
+        1.6,
+        1.4,
+        1.4
       ],
-      "q1_session_mean": 2.4,
-      "q2_mean": 2.47,
-      "miti_global_mean": 2.5,
+      "q1_session_mean": 1.467,
+      "q2_mean": 1.29,
+      "miti_global_mean": 1.0,
       "n_messages": 7,
-      "wall_s": 14.9
+      "cost_usd": 0.001844,
+      "wall_s": 24.2
     },
     {
       "model": "mi-coach-pto-iter1",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        2.0,
+        2.6,
+        2.6
+      ],
+      "q1_session_mean": 2.4,
+      "q2_mean": 3.24,
+      "miti_global_mean": 3.25,
+      "n_messages": 7,
+      "cost_usd": 0.00176,
+      "wall_s": 24.8
+    },
+    {
+      "model": "mi-coach-pto-iter2",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.4,
+        2.6,
+        3.4
+      ],
+      "q1_session_mean": 2.8,
+      "q2_mean": 3.88,
+      "miti_global_mean": 3.5,
+      "n_messages": 7,
+      "cost_usd": 0.001853,
+      "wall_s": 24.8
+    },
+    {
+      "model": "mi-coach-pto-iter1",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.6,
+        2.4,
+        2.4
+      ],
+      "q1_session_mean": 2.467,
+      "q2_mean": 3.18,
+      "miti_global_mean": 2.5,
+      "n_messages": 7,
+      "cost_usd": 0.001887,
+      "wall_s": 25.0
+    },
+    {
+      "model": "mi-coach-pto-iter2",
+      "persona": "emma-smoking",
       "session": 1,
+      "q1_turn_means": [
+        2.4,
+        3.6,
+        3.6
+      ],
+      "q1_session_mean": 3.2,
+      "q2_mean": 4.12,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001833,
+      "wall_s": 21.1
+    },
+    {
+      "model": "mi-coach-pto-iter2",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        2.2,
+        2.0,
+        1.6
+      ],
+      "q1_session_mean": 1.933,
+      "q2_mean": 2.59,
+      "miti_global_mean": 2.5,
+      "n_messages": 7,
+      "cost_usd": 0.001876,
+      "wall_s": 26.1
+    },
+    {
+      "model": "mi-coach-pto-iter3",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.2,
+        2.8,
+        2.6
+      ],
+      "q1_session_mean": 2.867,
+      "q2_mean": 3.65,
+      "miti_global_mean": 3.5,
+      "n_messages": 7,
+      "cost_usd": 0.001857,
+      "wall_s": 26.3
+    },
+    {
+      "model": "mi-coach-pto-iter3",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.4,
+        2.6,
+        2.6
+      ],
+      "q1_session_mean": 2.533,
+      "q2_mean": 3.35,
+      "miti_global_mean": 3.5,
+      "n_messages": 7,
+      "cost_usd": 0.00182,
+      "wall_s": 29.4
+    },
+    {
+      "model": "mi-coach-pto-iter3",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        2.6,
+        2.6,
+        2.4
+      ],
+      "q1_session_mean": 2.533,
+      "q2_mean": 3.35,
+      "miti_global_mean": 3.0,
+      "n_messages": 7,
+      "cost_usd": 0.00179,
+      "wall_s": 20.6
+    },
+    {
+      "model": "mi-coach-pto-iter4",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.4,
+        2.8,
+        2.6
+      ],
+      "q1_session_mean": 2.933,
+      "q2_mean": 3.76,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001975,
+      "wall_s": 23.9
+    },
+    {
+      "model": "mi-coach-pto-iter4",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.6,
+        3.6,
+        2.6
+      ],
+      "q1_session_mean": 2.933,
+      "q2_mean": 3.24,
+      "miti_global_mean": 3.5,
+      "n_messages": 7,
+      "cost_usd": 0.002055,
+      "wall_s": 27.8
+    },
+    {
+      "model": "mi-coach-pto-iter4",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        2.4,
+        2.6,
+        2.6
+      ],
+      "q1_session_mean": 2.533,
+      "q2_mean": 3.35,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001813,
+      "wall_s": 25.2
+    },
+    {
+      "model": "mi-coach-pto-iter5",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.6,
+        3.8,
+        3.4
+      ],
+      "q1_session_mean": 3.267,
+      "q2_mean": 4.24,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001907,
+      "wall_s": 22.1
+    },
+    {
+      "model": "mi-coach-pto-iter5",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        2.6,
+        2.4,
+        1.4
+      ],
+      "q1_session_mean": 2.133,
+      "q2_mean": 2.65,
+      "miti_global_mean": 2.5,
+      "n_messages": 7,
+      "cost_usd": 0.001661,
+      "wall_s": 20.5
+    },
+    {
+      "model": "mi-coach-pto-iter6",
+      "persona": "emma-smoking",
+      "session": 0,
       "q1_turn_means": [
         2.6,
         2.6,
         2.6
       ],
       "q1_session_mean": 2.6,
-      "q2_mean": 3.24,
-      "miti_global_mean": 3.25,
+      "q2_mean": 3.94,
+      "miti_global_mean": 3.75,
       "n_messages": 7,
-      "wall_s": 17.2
+      "cost_usd": 0.001859,
+      "wall_s": 19.5
     },
     {
-      "model": "mi-coach-pto-iter2",
-      "session": 0,
+      "model": "mi-coach-pto-iter5",
+      "persona": "emma-smoking",
+      "session": 2,
       "q1_turn_means": [
         2.6,
+        2.6,
+        3.4
+      ],
+      "q1_session_mean": 2.867,
+      "q2_mean": 4.0,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.002531,
+      "wall_s": 24.2
+    },
+    {
+      "model": "mi-coach-pto-iter6",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.0,
+        2.6,
+        2.8
+      ],
+      "q1_session_mean": 2.8,
+      "q2_mean": 4.0,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001761,
+      "wall_s": 16.5
+    },
+    {
+      "model": "mi-coach-pto-iter6",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
         3.4,
+        2.6,
         3.4
       ],
       "q1_session_mean": 3.133,
       "q2_mean": 4.29,
       "miti_global_mean": 3.75,
       "n_messages": 7,
+      "cost_usd": 0.00192,
+      "wall_s": 21.4
+    },
+    {
+      "model": "mi-coach-pto-iter7",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.6,
+        2.4,
+        2.6
+      ],
+      "q1_session_mean": 2.533,
+      "q2_mean": 3.82,
+      "miti_global_mean": 3.5,
+      "n_messages": 7,
+      "cost_usd": 0.001862,
       "wall_s": 18.2
     },
     {
-      "model": "mi-coach-pto-iter1",
+      "model": "mi-coach-pto-iter7",
+      "persona": "emma-smoking",
       "session": 2,
+      "q1_turn_means": [
+        3.6,
+        3.4,
+        3.6
+      ],
+      "q1_session_mean": 3.533,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002071,
+      "wall_s": 21.2
+    },
+    {
+      "model": "mi-coach-pto-iter7",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.0,
+        3.6,
+        3.6
+      ],
+      "q1_session_mean": 3.4,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002219,
+      "wall_s": 22.9
+    },
+    {
+      "model": "mi-coach-pto-iter8",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.6,
+        2.8,
+        3.6
+      ],
+      "q1_session_mean": 3.0,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.00191,
+      "wall_s": 18.9
+    },
+    {
+      "model": "mi-coach-pto-iter8",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        4.4,
+        3.6,
+        3.6
+      ],
+      "q1_session_mean": 3.867,
+      "q2_mean": 4.24,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.002625,
+      "wall_s": 25.5
+    },
+    {
+      "model": "mi-coach-pto-iter8",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        3.6,
+        3.4,
+        3.4
+      ],
+      "q1_session_mean": 3.467,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.0,
+      "n_messages": 7,
+      "cost_usd": 0.002227,
+      "wall_s": 23.3
+    },
+    {
+      "model": "mi-coach-pto-iter9",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        3.8,
+        3.4,
+        3.4
+      ],
+      "q1_session_mean": 3.533,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002337,
+      "wall_s": 25.0
+    },
+    {
+      "model": "mi-coach-pto-iter9",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        4.4,
+        4.4,
+        3.4
+      ],
+      "q1_session_mean": 4.067,
+      "q2_mean": 4.71,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002365,
+      "wall_s": 29.9
+    },
+    {
+      "model": "mi-coach-pto-iter9",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        3.8,
+        3.6,
+        3.6
+      ],
+      "q1_session_mean": 3.667,
+      "q2_mean": 4.71,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002414,
+      "wall_s": 26.9
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.8,
+        3.4,
+        3.4
+      ],
+      "q1_session_mean": 3.533,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.001976,
+      "wall_s": 22.6
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.6,
+        4.4,
+        4.4
+      ],
+      "q1_session_mean": 3.8,
+      "q2_mean": 4.82,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002358,
+      "wall_s": 25.6
+    },
+    {
+      "model": "mi-coach-grpo-iter1",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.4,
+        2.4,
+        2.4
+      ],
+      "q1_session_mean": 2.4,
+      "q2_mean": 3.24,
+      "miti_global_mean": 2.75,
+      "n_messages": 7,
+      "cost_usd": 0.001818,
+      "wall_s": 17.3
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        3.6,
+        3.6,
+        3.6
+      ],
+      "q1_session_mean": 3.6,
+      "q2_mean": 4.71,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002426,
+      "wall_s": 23.4
+    },
+    {
+      "model": "mi-coach-grpo-iter1",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.6,
+        2.4,
+        1.4
+      ],
+      "q1_session_mean": 2.467,
+      "q2_mean": 2.47,
+      "miti_global_mean": 2.75,
+      "n_messages": 7,
+      "cost_usd": 0.0018,
+      "wall_s": 17.0
+    },
+    {
+      "model": "mi-coach-grpo-iter1",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        1.4,
+        2.0,
+        2.0
+      ],
+      "q1_session_mean": 1.8,
+      "q2_mean": 2.59,
+      "miti_global_mean": 2.5,
+      "n_messages": 7,
+      "cost_usd": 0.001915,
+      "wall_s": 19.8
+    },
+    {
+      "model": "mi-coach-grpo-iter2",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        2.4,
+        2.4,
+        2.6
+      ],
+      "q1_session_mean": 2.467,
+      "q2_mean": 3.35,
+      "miti_global_mean": 3.0,
+      "n_messages": 7,
+      "cost_usd": 0.00171,
+      "wall_s": 17.1
+    },
+    {
+      "model": "mi-coach-grpo-iter2",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        2.8,
+        2.6,
+        2.4
+      ],
+      "q1_session_mean": 2.6,
+      "q2_mean": 2.71,
+      "miti_global_mean": 2.75,
+      "n_messages": 7,
+      "cost_usd": 0.002177,
+      "wall_s": 20.7
+    },
+    {
+      "model": "mi-coach-grpo-iter2",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        3.6,
+        2.4,
+        1.6
+      ],
+      "q1_session_mean": 2.533,
+      "q2_mean": 2.71,
+      "miti_global_mean": 3.0,
+      "n_messages": 7,
+      "cost_usd": 0.001943,
+      "wall_s": 18.9
+    },
+    {
+      "model": "mi-coach-grpo-iter3",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        3.6,
+        2.8,
+        3.6
+      ],
+      "q1_session_mean": 3.333,
+      "q2_mean": 4.29,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001904,
+      "wall_s": 20.8
+    },
+    {
+      "model": "mi-coach-grpo-iter3",
+      "persona": "emma-smoking",
+      "session": 1,
       "q1_turn_means": [
         2.6,
         2.6,
         2.6
       ],
       "q1_session_mean": 2.6,
-      "q2_mean": 3.35,
-      "miti_global_mean": 3.5,
+      "q2_mean": 4.0,
+      "miti_global_mean": 3.0,
       "n_messages": 7,
-      "wall_s": 24.0
+      "cost_usd": 0.001817,
+      "wall_s": 18.2
     },
     {
-      "model": "mi-coach-pto-iter2",
-      "session": 2,
-      "q1_turn_means": [
-        2.8,
-        2.6,
-        2.6
-      ],
-      "q1_session_mean": 2.667,
-      "q2_mean": 3.35,
-      "miti_global_mean": 3.25,
-      "n_messages": 7,
-      "wall_s": 15.4
-    },
-    {
-      "model": "mi-coach-pto-iter3",
+      "model": "mi-coach-grpo-iter4",
+      "persona": "emma-smoking",
       "session": 0,
       "q1_turn_means": [
         2.6,
-        3.6,
-        2.4
+        3.8,
+        3.4
       ],
-      "q1_session_mean": 2.867,
-      "q2_mean": 3.41,
-      "miti_global_mean": 2.75,
+      "q1_session_mean": 3.267,
+      "q2_mean": 4.29,
+      "miti_global_mean": 3.75,
       "n_messages": 7,
-      "wall_s": 15.2
+      "cost_usd": 0.001763,
+      "wall_s": 21.9
     },
     {
-      "model": "mi-coach-pto-iter2",
-      "session": 1,
+      "model": "mi-coach-grpo-iter3",
+      "persona": "emma-smoking",
+      "session": 2,
       "q1_turn_means": [
-        2.0,
-        2.0,
-        2.0
-      ],
-      "q1_session_mean": 2.0,
-      "q2_mean": 3.18,
-      "miti_global_mean": 2.5,
-      "n_messages": 7,
-      "wall_s": 18.6
-    },
-    {
-      "model": "mi-coach-pto-iter3",
-      "session": 1,
-      "q1_turn_means": [
-        3.4,
+        3.0,
         2.8,
         2.8
       ],
-      "q1_session_mean": 3.0,
-      "q2_mean": 3.29,
+      "q1_session_mean": 2.867,
+      "q2_mean": 3.88,
       "miti_global_mean": 3.5,
       "n_messages": 7,
-      "wall_s": 24.4
+      "cost_usd": 0.001936,
+      "wall_s": 27.3
     },
     {
-      "model": "mi-coach-pto-iter3",
+      "model": "mi-coach-grpo-iter4",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.4,
+        3.6,
+        3.6
+      ],
+      "q1_session_mean": 3.533,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.0,
+      "n_messages": 7,
+      "cost_usd": 0.002053,
+      "wall_s": 20.1
+    },
+    {
+      "model": "mi-coach-grpo-iter4",
+      "persona": "emma-smoking",
       "session": 2,
+      "q1_turn_means": [
+        3.6,
+        2.8,
+        3.4
+      ],
+      "q1_session_mean": 3.267,
+      "q2_mean": 4.29,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001885,
+      "wall_s": 19.7
+    },
+    {
+      "model": "mi-coach-grpo-iter5",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        3.6,
+        2.6,
+        2.6
+      ],
+      "q1_session_mean": 2.933,
+      "q2_mean": 3.88,
+      "miti_global_mean": 3.25,
+      "n_messages": 7,
+      "cost_usd": 0.00186,
+      "wall_s": 19.5
+    },
+    {
+      "model": "mi-coach-grpo-iter5",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        3.6,
+        3.8,
+        3.6
+      ],
+      "q1_session_mean": 3.667,
+      "q2_mean": 4.29,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001984,
+      "wall_s": 22.7
+    },
+    {
+      "model": "mi-coach-grpo-iter5",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.8,
+        3.4,
+        3.4
+      ],
+      "q1_session_mean": 3.533,
+      "q2_mean": 3.76,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.002153,
+      "wall_s": 24.1
+    },
+    {
+      "model": "mi-coach-grpo-iter6",
+      "persona": "emma-smoking",
+      "session": 0,
       "q1_turn_means": [
         3.6,
         2.6,
@@ -124,66 +733,12 @@
       "q2_mean": 4.29,
       "miti_global_mean": 3.75,
       "n_messages": 7,
-      "wall_s": 16.7
+      "cost_usd": 0.001738,
+      "wall_s": 16.8
     },
     {
-      "model": "mi-coach-pto-iter4",
-      "session": 1,
-      "q1_turn_means": [
-        3.6,
-        2.4,
-        2.4
-      ],
-      "q1_session_mean": 2.8,
-      "q2_mean": 3.24,
-      "miti_global_mean": 3.0,
-      "n_messages": 7,
-      "wall_s": 15.9
-    },
-    {
-      "model": "mi-coach-pto-iter4",
-      "session": 0,
-      "q1_turn_means": [
-        3.6,
-        3.8,
-        2.6
-      ],
-      "q1_session_mean": 3.333,
-      "q2_mean": 3.88,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 24.1
-    },
-    {
-      "model": "mi-coach-pto-iter5",
-      "session": 0,
-      "q1_turn_means": [
-        3.8,
-        3.4,
-        3.8
-      ],
-      "q1_session_mean": 3.667,
-      "q2_mean": 4.29,
-      "miti_global_mean": 4.0,
-      "n_messages": 7,
-      "wall_s": 14.6
-    },
-    {
-      "model": "mi-coach-pto-iter4",
-      "session": 2,
-      "q1_turn_means": [
-        3.6,
-        2.8,
-        2.8
-      ],
-      "q1_session_mean": 3.067,
-      "q2_mean": 3.76,
-      "miti_global_mean": 3.5,
-      "n_messages": 7,
-      "wall_s": 18.6
-    },
-    {
-      "model": "mi-coach-pto-iter5",
+      "model": "mi-coach-grpo-iter6",
+      "persona": "emma-smoking",
       "session": 1,
       "q1_turn_means": [
         3.6,
@@ -191,139 +746,111 @@
         4.2
       ],
       "q1_session_mean": 3.867,
-      "q2_mean": 4.41,
-      "miti_global_mean": 4.25,
-      "n_messages": 7,
-      "wall_s": 21.8
-    },
-    {
-      "model": "mi-coach-pto-iter5",
-      "session": 2,
-      "q1_turn_means": [
-        3.8,
-        3.4,
-        3.6
-      ],
-      "q1_session_mean": 3.6,
-      "q2_mean": 4.29,
-      "miti_global_mean": 4.25,
-      "n_messages": 7,
-      "wall_s": 27.2
-    },
-    {
-      "model": "mi-coach-pto-iter6",
-      "session": 0,
-      "q1_turn_means": [
-        3.8,
-        3.6,
-        3.6
-      ],
-      "q1_session_mean": 3.667,
       "q2_mean": 4.29,
       "miti_global_mean": 3.75,
       "n_messages": 7,
-      "wall_s": 22.6
+      "cost_usd": 0.00195,
+      "wall_s": 19.9
     },
     {
-      "model": "mi-coach-pto-iter6",
-      "session": 1,
-      "q1_turn_means": [
-        2.4,
-        2.8,
-        3.0
-      ],
-      "q1_session_mean": 2.733,
-      "q2_mean": 3.88,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 21.7
-    },
-    {
-      "model": "mi-coach-pto-iter6",
+      "model": "mi-coach-grpo-iter6",
+      "persona": "emma-smoking",
       "session": 2,
-      "q1_turn_means": [
-        3.8,
-        3.6,
-        4.2
-      ],
-      "q1_session_mean": 3.867,
-      "q2_mean": 4.18,
-      "miti_global_mean": 4.0,
-      "n_messages": 7,
-      "wall_s": 21.3
-    },
-    {
-      "model": "mi-coach-pto-iter7",
-      "session": 1,
-      "q1_turn_means": [
-        3.6,
-        2.8,
-        3.6
-      ],
-      "q1_session_mean": 3.333,
-      "q2_mean": 4.0,
-      "miti_global_mean": 3.5,
-      "n_messages": 7,
-      "wall_s": 17.2
-    },
-    {
-      "model": "mi-coach-pto-iter7",
-      "session": 0,
       "q1_turn_means": [
         2.6,
-        2.8,
-        3.4
+        3.4,
+        2.6
       ],
-      "q1_session_mean": 2.933,
-      "q2_mean": 4.12,
-      "miti_global_mean": 4.25,
+      "q1_session_mean": 2.867,
+      "q2_mean": 4.0,
+      "miti_global_mean": 3.75,
       "n_messages": 7,
-      "wall_s": 20.8
+      "cost_usd": 0.001853,
+      "wall_s": 17.5
     },
     {
-      "model": "mi-coach-pto-iter8",
+      "model": "mi-coach-grpo-iter7",
+      "persona": "emma-smoking",
       "session": 0,
       "q1_turn_means": [
         3.6,
-        3.6,
-        3.6
+        3.8,
+        3.4
       ],
       "q1_session_mean": 3.6,
       "q2_mean": 4.29,
-      "miti_global_mean": 4.5,
+      "miti_global_mean": 4.0,
       "n_messages": 7,
-      "wall_s": 18.2
-    },
-    {
-      "model": "mi-coach-pto-iter7",
-      "session": 2,
-      "q1_turn_means": [
-        3.8,
-        3.6,
-        3.4
-      ],
-      "q1_session_mean": 3.6,
-      "q2_mean": 3.88,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 22.4
-    },
-    {
-      "model": "mi-coach-pto-iter8",
-      "session": 1,
-      "q1_turn_means": [
-        3.8,
-        3.4,
-        3.4
-      ],
-      "q1_session_mean": 3.533,
-      "q2_mean": 4.06,
-      "miti_global_mean": 3.5,
-      "n_messages": 7,
+      "cost_usd": 0.001931,
       "wall_s": 17.4
     },
     {
-      "model": "mi-coach-pto-iter8",
+      "model": "mi-coach-grpo-iter7",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.8,
+        3.6,
+        3.4
+      ],
+      "q1_session_mean": 3.6,
+      "q2_mean": 4.12,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.002211,
+      "wall_s": 20.9
+    },
+    {
+      "model": "mi-coach-grpo-iter7",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        3.6,
+        3.4,
+        3.4
+      ],
+      "q1_session_mean": 3.467,
+      "q2_mean": 3.82,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001948,
+      "wall_s": 19.5
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        3.6,
+        3.6,
+        3.6
+      ],
+      "q1_session_mean": 3.6,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.0,
+      "n_messages": 7,
+      "cost_usd": 0.002098,
+      "wall_s": 20.1
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.6,
+        3.4,
+        3.4
+      ],
+      "q1_session_mean": 3.467,
+      "q2_mean": 4.35,
+      "miti_global_mean": 4.75,
+      "n_messages": 7,
+      "cost_usd": 0.002533,
+      "wall_s": 24.4
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "emma-smoking",
       "session": 2,
       "q1_turn_means": [
         4.4,
@@ -331,69 +858,15 @@
         3.8
       ],
       "q1_session_mean": 4.0,
-      "q2_mean": 4.24,
+      "q2_mean": 4.29,
       "miti_global_mean": 4.5,
       "n_messages": 7,
-      "wall_s": 23.2
+      "cost_usd": 0.002318,
+      "wall_s": 23.3
     },
     {
-      "model": "mi-coach-pto-iter9",
-      "session": 1,
-      "q1_turn_means": [
-        3.6,
-        3.6,
-        4.4
-      ],
-      "q1_session_mean": 3.867,
-      "q2_mean": 4.59,
-      "miti_global_mean": 4.25,
-      "n_messages": 7,
-      "wall_s": 19.7
-    },
-    {
-      "model": "mi-coach-pto-iter9",
-      "session": 0,
-      "q1_turn_means": [
-        2.6,
-        2.6,
-        2.4
-      ],
-      "q1_session_mean": 2.533,
-      "q2_mean": 3.35,
-      "miti_global_mean": 2.75,
-      "n_messages": 7,
-      "wall_s": 24.6
-    },
-    {
-      "model": "mi-coach-pto-iter9",
-      "session": 2,
-      "q1_turn_means": [
-        3.8,
-        3.6,
-        3.4
-      ],
-      "q1_session_mean": 3.6,
-      "q2_mean": 4.12,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 22.3
-    },
-    {
-      "model": "mi-coach-pto-iter10",
-      "session": 0,
-      "q1_turn_means": [
-        2.6,
-        3.6,
-        3.4
-      ],
-      "q1_session_mean": 3.2,
-      "q2_mean": 4.29,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 18.6
-    },
-    {
-      "model": "mi-coach-pto-iter10",
+      "model": "mi-coach-grpo-iter9",
+      "persona": "emma-smoking",
       "session": 1,
       "q1_turn_means": [
         3.8,
@@ -401,733 +874,226 @@
         3.8
       ],
       "q1_session_mean": 3.8,
-      "q2_mean": 4.71,
-      "miti_global_mean": 4.5,
-      "n_messages": 7,
-      "wall_s": 18.1
-    },
-    {
-      "model": "mi-coach-pto-iter10",
-      "session": 2,
-      "q1_turn_means": [
-        3.6,
-        3.4,
-        3.4
-      ],
-      "q1_session_mean": 3.467,
       "q2_mean": 4.29,
-      "miti_global_mean": 4.5,
-      "n_messages": 7,
-      "wall_s": 21.0
-    },
-    {
-      "model": "mi-coach-grpo-iter1",
-      "session": 0,
-      "q1_turn_means": [
-        2.4,
-        2.6,
-        2.6
-      ],
-      "q1_session_mean": 2.533,
-      "q2_mean": 3.88,
       "miti_global_mean": 3.5,
       "n_messages": 7,
-      "wall_s": 19.3
-    },
-    {
-      "model": "mi-coach-grpo-iter1",
-      "session": 1,
-      "q1_turn_means": [
-        3.2,
-        2.4,
-        2.0
-      ],
-      "q1_session_mean": 2.533,
-      "q2_mean": 3.12,
-      "miti_global_mean": 2.5,
-      "n_messages": 7,
-      "wall_s": 15.7
-    },
-    {
-      "model": "mi-coach-grpo-iter1",
-      "session": 2,
-      "q1_turn_means": [
-        1.6,
-        2.0,
-        2.0
-      ],
-      "q1_session_mean": 1.867,
-      "q2_mean": 2.47,
-      "miti_global_mean": 2.75,
-      "n_messages": 7,
-      "wall_s": 16.7
-    },
-    {
-      "model": "mi-coach-grpo-iter2",
-      "session": 0,
-      "q1_turn_means": [
-        2.0,
-        2.0,
-        2.4
-      ],
-      "q1_session_mean": 2.133,
-      "q2_mean": 3.29,
-      "miti_global_mean": 2.75,
-      "n_messages": 7,
-      "wall_s": 16.3
-    },
-    {
-      "model": "mi-coach-grpo-iter2",
-      "session": 2,
-      "q1_turn_means": [
-        2.6,
-        2.6,
-        2.6
-      ],
-      "q1_session_mean": 2.6,
-      "q2_mean": 3.71,
-      "miti_global_mean": 3.0,
-      "n_messages": 7,
-      "wall_s": 17.7
-    },
-    {
-      "model": "mi-coach-grpo-iter2",
-      "session": 1,
-      "q1_turn_means": [
-        3.6,
-        2.8,
-        2.4
-      ],
-      "q1_session_mean": 2.933,
-      "q2_mean": 3.82,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 19.7
-    },
-    {
-      "model": "mi-coach-grpo-iter3",
-      "session": 0,
-      "q1_turn_means": [
-        2.6,
-        2.6,
-        2.8
-      ],
-      "q1_session_mean": 2.667,
-      "q2_mean": 4.29,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 17.6
-    },
-    {
-      "model": "mi-coach-grpo-iter3",
-      "session": 1,
-      "q1_turn_means": [
-        2.6,
-        2.6,
-        2.8
-      ],
-      "q1_session_mean": 2.667,
-      "q2_mean": 3.88,
-      "miti_global_mean": 3.25,
-      "n_messages": 7,
-      "wall_s": 16.7
-    },
-    {
-      "model": "mi-coach-grpo-iter3",
-      "session": 2,
-      "q1_turn_means": [
-        3.6,
-        3.6,
-        3.4
-      ],
-      "q1_session_mean": 3.533,
-      "q2_mean": 4.0,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 16.8
-    },
-    {
-      "model": "mi-coach-grpo-iter4",
-      "session": 1,
-      "q1_turn_means": [
-        3.6,
-        3.6,
-        3.6
-      ],
-      "q1_session_mean": 3.6,
-      "q2_mean": 3.94,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 16.7
-    },
-    {
-      "model": "mi-coach-grpo-iter4",
-      "session": 0,
-      "q1_turn_means": [
-        3.4,
-        2.6,
-        3.4
-      ],
-      "q1_session_mean": 3.133,
-      "q2_mean": 4.12,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 22.6
-    },
-    {
-      "model": "mi-coach-grpo-iter4",
-      "session": 2,
-      "q1_turn_means": [
-        3.6,
-        3.4,
-        3.4
-      ],
-      "q1_session_mean": 3.467,
-      "q2_mean": 4.18,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 20.3
-    },
-    {
-      "model": "mi-coach-grpo-iter5",
-      "session": 1,
-      "q1_turn_means": [
-        3.4,
-        3.4,
-        3.4
-      ],
-      "q1_session_mean": 3.4,
-      "q2_mean": 3.94,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 17.7
-    },
-    {
-      "model": "mi-coach-grpo-iter5",
-      "session": 0,
-      "q1_turn_means": [
-        3.8,
-        3.4,
-        2.6
-      ],
-      "q1_session_mean": 3.267,
-      "q2_mean": 3.94,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 20.7
-    },
-    {
-      "model": "mi-coach-grpo-iter5",
-      "session": 2,
-      "q1_turn_means": [
-        4.4,
-        3.4,
-        2.8
-      ],
-      "q1_session_mean": 3.533,
-      "q2_mean": 3.29,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 21.8
-    },
-    {
-      "model": "mi-coach-grpo-iter6",
-      "session": 0,
-      "q1_turn_means": [
-        3.6,
-        3.8,
-        3.8
-      ],
-      "q1_session_mean": 3.733,
-      "q2_mean": 4.29,
-      "miti_global_mean": 4.0,
-      "n_messages": 7,
-      "wall_s": 18.7
-    },
-    {
-      "model": "mi-coach-grpo-iter6",
-      "session": 1,
-      "q1_turn_means": [
-        2.6,
-        3.6,
-        3.8
-      ],
-      "q1_session_mean": 3.333,
-      "q2_mean": 4.29,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 20.5
-    },
-    {
-      "model": "mi-coach-grpo-iter6",
-      "session": 2,
-      "q1_turn_means": [
-        3.8,
-        3.4,
-        3.4
-      ],
-      "q1_session_mean": 3.533,
-      "q2_mean": 4.24,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 23.4
-    },
-    {
-      "model": "mi-coach-grpo-iter7",
-      "session": 0,
-      "q1_turn_means": [
-        3.6,
-        2.6,
-        2.8
-      ],
-      "q1_session_mean": 3.0,
-      "q2_mean": 4.0,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 20.7
-    },
-    {
-      "model": "mi-coach-grpo-iter7",
-      "session": 1,
-      "q1_turn_means": [
-        3.8,
-        3.8,
-        3.4
-      ],
-      "q1_session_mean": 3.667,
-      "q2_mean": 3.94,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 29.4
-    },
-    {
-      "model": "mi-coach-grpo-iter7",
-      "session": 2,
-      "q1_turn_means": [
-        3.6,
-        3.4,
-        3.4
-      ],
-      "q1_session_mean": 3.467,
-      "q2_mean": 4.29,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 22.0
-    },
-    {
-      "model": "mi-coach-grpo-iter8",
-      "session": 0,
-      "q1_turn_means": [
-        3.8,
-        3.8,
-        3.6
-      ],
-      "q1_session_mean": 3.733,
-      "q2_mean": 4.29,
-      "miti_global_mean": 4.5,
-      "n_messages": 7,
-      "wall_s": 26.1
-    },
-    {
-      "model": "mi-coach-grpo-iter8",
-      "session": 1,
-      "q1_turn_means": [
-        4.4,
-        3.8,
-        3.6
-      ],
-      "q1_session_mean": 3.933,
-      "q2_mean": 4.29,
-      "miti_global_mean": 4.0,
-      "n_messages": 7,
-      "wall_s": 27.5
-    },
-    {
-      "model": "mi-coach-grpo-iter8",
-      "session": 2,
-      "q1_turn_means": [
-        3.8,
-        3.6,
-        3.6
-      ],
-      "q1_session_mean": 3.667,
-      "q2_mean": 4.29,
-      "miti_global_mean": 4.5,
-      "n_messages": 7,
-      "wall_s": 22.4
-    },
-    {
-      "model": "mi-coach-grpo-iter9",
-      "session": 1,
-      "q1_turn_means": [
-        3.6,
-        3.8,
-        3.4
-      ],
-      "q1_session_mean": 3.6,
-      "q2_mean": 4.35,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
+      "cost_usd": 0.001879,
       "wall_s": 17.6
     },
     {
       "model": "mi-coach-grpo-iter9",
+      "persona": "emma-smoking",
       "session": 0,
       "q1_turn_means": [
-        3.6,
-        3.6,
+        4.4,
+        3.8,
         3.4
       ],
-      "q1_session_mean": 3.533,
-      "q2_mean": 4.18,
-      "miti_global_mean": 3.75,
-      "n_messages": 7,
-      "wall_s": 27.2
-    },
-    {
-      "model": "mi-coach-grpo-iter9",
-      "session": 2,
-      "q1_turn_means": [
-        3.8,
-        3.4,
-        3.6
-      ],
-      "q1_session_mean": 3.6,
+      "q1_session_mean": 3.867,
       "q2_mean": 4.29,
       "miti_global_mean": 3.75,
       "n_messages": 7,
-      "wall_s": 17.2
+      "cost_usd": 0.002202,
+      "wall_s": 24.4
     },
     {
-      "model": "mi-coach-grpo-iter10",
-      "session": 0,
+      "model": "mi-coach-grpo-iter9",
+      "persona": "emma-smoking",
+      "session": 2,
       "q1_turn_means": [
         3.4,
-        3.6,
-        3.0
+        3.8,
+        3.8
       ],
-      "q1_session_mean": 3.333,
-      "q2_mean": 3.76,
-      "miti_global_mean": 3.75,
+      "q1_session_mean": 3.667,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.25,
       "n_messages": 7,
+      "cost_usd": 0.001905,
       "wall_s": 21.4
     },
     {
       "model": "mi-coach-grpo-iter10",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        4.4,
+        3.4,
+        3.4
+      ],
+      "q1_session_mean": 3.733,
+      "q2_mean": 4.12,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.002548,
+      "wall_s": 26.9
+    },
+    {
+      "model": "mi-coach-grpo-iter10",
+      "persona": "emma-smoking",
       "session": 1,
       "q1_turn_means": [
         4.4,
         3.4,
-        2.6
+        2.4
       ],
-      "q1_session_mean": 3.467,
-      "q2_mean": 4.18,
-      "miti_global_mean": 4.0,
+      "q1_session_mean": 3.4,
+      "q2_mean": 4.65,
+      "miti_global_mean": 4.75,
       "n_messages": 7,
-      "wall_s": 22.2
+      "cost_usd": 0.002502,
+      "wall_s": 25.1
     },
     {
       "model": "mi-coach-grpo-iter10",
+      "persona": "emma-smoking",
       "session": 2,
       "q1_turn_means": [
-        4.2,
-        2.2,
+        3.6,
+        2.6,
         2.6
       ],
-      "q1_session_mean": 3.0,
-      "q2_mean": 3.65,
-      "miti_global_mean": 4.0,
+      "q1_session_mean": 2.933,
+      "q2_mean": 4.59,
+      "miti_global_mean": 4.25,
       "n_messages": 7,
-      "wall_s": 25.9
+      "cost_usd": 0.002542,
+      "wall_s": 24.1
     },
     {
       "model": "meta-llama/Llama-3.2-1B",
+      "persona": "emma-smoking",
       "session": 0,
       "q1_turn_means": [
-        3.0,
+        3.6,
+        2.4,
+        1.6
+      ],
+      "q1_session_mean": 2.533,
+      "q2_mean": 2.47,
+      "miti_global_mean": 2.25,
+      "n_messages": 7,
+      "cost_usd": 0.001881,
+      "wall_s": 19.2
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        2.8,
+        2.6,
+        2.4
+      ],
+      "q1_session_mean": 2.6,
+      "q2_mean": 2.71,
+      "miti_global_mean": 2.5,
+      "n_messages": 7,
+      "cost_usd": 0.002131,
+      "wall_s": 24.7
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "emma-smoking",
+      "session": 2,
+      "q1_turn_means": [
+        2.6,
         2.8,
         2.6
       ],
-      "q1_session_mean": 2.8,
-      "q2_mean": 3.94,
+      "q1_session_mean": 2.667,
+      "q2_mean": 3.24,
       "miti_global_mean": 3.5,
       "n_messages": 7,
-      "wall_s": 23.0
-    },
-    {
-      "model": "meta-llama/Llama-3.2-1B",
-      "session": 1,
-      "q1_turn_means": [
-        3.4,
-        2.0,
-        1.6
-      ],
-      "q1_session_mean": 2.333,
-      "q2_mean": 2.59,
-      "miti_global_mean": 3.0,
-      "n_messages": 7,
-      "wall_s": 18.2
-    },
-    {
-      "model": "meta-llama/Llama-3.2-1B",
-      "session": 2,
-      "q1_turn_means": [
-        2.6,
-        2.6,
-        2.6
-      ],
-      "q1_session_mean": 2.6,
-      "q2_mean": 3.94,
-      "miti_global_mean": 2.75,
-      "n_messages": 7,
-      "wall_s": 13.9
+      "cost_usd": 0.001835,
+      "wall_s": 20.9
     }
   ],
   "aggregate": {
     "mi-coach-pto-iter1": {
       "q1_session_mean": {
-        "mean": 2.53,
-        "std": 0.12
+        "mean": 2.11,
+        "std": 0.56
       },
       "q2_mean": {
-        "mean": 3.02,
-        "std": 0.48
+        "mean": 2.57,
+        "std": 1.11
       },
       "miti_global_mean": {
-        "mean": 3.08,
-        "std": 0.52
+        "mean": 2.25,
+        "std": 1.15
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0055
     },
     "mi-coach-pto-iter2": {
       "q1_session_mean": {
-        "mean": 2.6,
-        "std": 0.57
+        "mean": 2.64,
+        "std": 0.65
       },
       "q2_mean": {
-        "mean": 3.61,
-        "std": 0.6
+        "mean": 3.53,
+        "std": 0.82
       },
       "miti_global_mean": {
-        "mean": 3.17,
-        "std": 0.63
+        "mean": 3.25,
+        "std": 0.66
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0056
     },
     "mi-coach-pto-iter3": {
       "q1_session_mean": {
-        "mean": 3.02,
-        "std": 0.17
+        "mean": 2.64,
+        "std": 0.19
       },
       "q2_mean": {
-        "mean": 3.66,
-        "std": 0.55
+        "mean": 3.45,
+        "std": 0.17
       },
       "miti_global_mean": {
         "mean": 3.33,
-        "std": 0.52
+        "std": 0.29
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0055
     },
     "mi-coach-pto-iter4": {
       "q1_session_mean": {
-        "mean": 3.07,
-        "std": 0.27
+        "mean": 2.8,
+        "std": 0.23
       },
       "q2_mean": {
-        "mean": 3.63,
-        "std": 0.34
+        "mean": 3.45,
+        "std": 0.27
       },
       "miti_global_mean": {
-        "mean": 3.42,
-        "std": 0.38
+        "mean": 3.67,
+        "std": 0.14
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0058
     },
     "mi-coach-pto-iter5": {
       "q1_session_mean": {
-        "mean": 3.71,
-        "std": 0.14
+        "mean": 2.76,
+        "std": 0.58
       },
       "q2_mean": {
-        "mean": 4.33,
-        "std": 0.07
+        "mean": 3.63,
+        "std": 0.86
       },
       "miti_global_mean": {
-        "mean": 4.17,
-        "std": 0.14
+        "mean": 3.33,
+        "std": 0.72
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0061
     },
     "mi-coach-pto-iter6": {
       "q1_session_mean": {
-        "mean": 3.42,
-        "std": 0.61
-      },
-      "q2_mean": {
-        "mean": 4.12,
-        "std": 0.21
-      },
-      "miti_global_mean": {
-        "mean": 3.83,
-        "std": 0.14
-      },
-      "n": 3
-    },
-    "mi-coach-pto-iter7": {
-      "q1_session_mean": {
-        "mean": 3.29,
-        "std": 0.34
-      },
-      "q2_mean": {
-        "mean": 4.0,
-        "std": 0.12
-      },
-      "miti_global_mean": {
-        "mean": 3.83,
-        "std": 0.38
-      },
-      "n": 3
-    },
-    "mi-coach-pto-iter8": {
-      "q1_session_mean": {
-        "mean": 3.71,
-        "std": 0.25
-      },
-      "q2_mean": {
-        "mean": 4.2,
-        "std": 0.12
-      },
-      "miti_global_mean": {
-        "mean": 4.17,
-        "std": 0.58
-      },
-      "n": 3
-    },
-    "mi-coach-pto-iter9": {
-      "q1_session_mean": {
-        "mean": 3.33,
-        "std": 0.71
-      },
-      "q2_mean": {
-        "mean": 4.02,
-        "std": 0.63
-      },
-      "miti_global_mean": {
-        "mean": 3.58,
-        "std": 0.76
-      },
-      "n": 3
-    },
-    "mi-coach-pto-iter10": {
-      "q1_session_mean": {
-        "mean": 3.49,
-        "std": 0.3
-      },
-      "q2_mean": {
-        "mean": 4.43,
-        "std": 0.24
-      },
-      "miti_global_mean": {
-        "mean": 4.25,
-        "std": 0.43
-      },
-      "n": 3
-    },
-    "mi-coach-grpo-iter1": {
-      "q1_session_mean": {
-        "mean": 2.31,
-        "std": 0.38
-      },
-      "q2_mean": {
-        "mean": 3.16,
-        "std": 0.71
-      },
-      "miti_global_mean": {
-        "mean": 2.92,
-        "std": 0.52
-      },
-      "n": 3
-    },
-    "mi-coach-grpo-iter2": {
-      "q1_session_mean": {
-        "mean": 2.56,
-        "std": 0.4
-      },
-      "q2_mean": {
-        "mean": 3.61,
-        "std": 0.28
-      },
-      "miti_global_mean": {
-        "mean": 3.17,
-        "std": 0.52
-      },
-      "n": 3
-    },
-    "mi-coach-grpo-iter3": {
-      "q1_session_mean": {
-        "mean": 2.96,
-        "std": 0.5
-      },
-      "q2_mean": {
-        "mean": 4.06,
-        "std": 0.21
-      },
-      "miti_global_mean": {
-        "mean": 3.58,
-        "std": 0.29
-      },
-      "n": 3
-    },
-    "mi-coach-grpo-iter4": {
-      "q1_session_mean": {
-        "mean": 3.4,
-        "std": 0.24
-      },
-      "q2_mean": {
-        "mean": 4.08,
-        "std": 0.12
-      },
-      "miti_global_mean": {
-        "mean": 3.75,
-        "std": 0.0
-      },
-      "n": 3
-    },
-    "mi-coach-grpo-iter5": {
-      "q1_session_mean": {
-        "mean": 3.4,
-        "std": 0.13
-      },
-      "q2_mean": {
-        "mean": 3.72,
-        "std": 0.38
-      },
-      "miti_global_mean": {
-        "mean": 3.75,
-        "std": 0.0
-      },
-      "n": 3
-    },
-    "mi-coach-grpo-iter6": {
-      "q1_session_mean": {
-        "mean": 3.53,
-        "std": 0.2
-      },
-      "q2_mean": {
-        "mean": 4.27,
-        "std": 0.03
-      },
-      "miti_global_mean": {
-        "mean": 3.83,
-        "std": 0.14
-      },
-      "n": 3
-    },
-    "mi-coach-grpo-iter7": {
-      "q1_session_mean": {
-        "mean": 3.38,
-        "std": 0.34
+        "mean": 2.84,
+        "std": 0.27
       },
       "q2_mean": {
         "mean": 4.08,
@@ -1137,67 +1103,587 @@
         "mean": 3.75,
         "std": 0.0
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0055
     },
-    "mi-coach-grpo-iter8": {
+    "mi-coach-pto-iter7": {
       "q1_session_mean": {
-        "mean": 3.78,
+        "mean": 3.16,
+        "std": 0.54
+      },
+      "q2_mean": {
+        "mean": 4.13,
+        "std": 0.27
+      },
+      "miti_global_mean": {
+        "mean": 4.17,
+        "std": 0.58
+      },
+      "n": 3,
+      "cost_usd": 0.0062
+    },
+    "mi-coach-pto-iter8": {
+      "q1_session_mean": {
+        "mean": 3.44,
+        "std": 0.43
+      },
+      "q2_mean": {
+        "mean": 4.27,
+        "std": 0.03
+      },
+      "miti_global_mean": {
+        "mean": 4.08,
+        "std": 0.38
+      },
+      "n": 3,
+      "cost_usd": 0.0068
+    },
+    "mi-coach-pto-iter9": {
+      "q1_session_mean": {
+        "mean": 3.76,
+        "std": 0.28
+      },
+      "q2_mean": {
+        "mean": 4.57,
+        "std": 0.24
+      },
+      "miti_global_mean": {
+        "mean": 4.5,
+        "std": 0.0
+      },
+      "n": 3,
+      "cost_usd": 0.0071
+    },
+    "mi-coach-pto-iter10": {
+      "q1_session_mean": {
+        "mean": 3.64,
         "std": 0.14
+      },
+      "q2_mean": {
+        "mean": 4.61,
+        "std": 0.28
+      },
+      "miti_global_mean": {
+        "mean": 4.5,
+        "std": 0.0
+      },
+      "n": 3,
+      "cost_usd": 0.0068
+    },
+    "mi-coach-grpo-iter1": {
+      "q1_session_mean": {
+        "mean": 2.22,
+        "std": 0.37
+      },
+      "q2_mean": {
+        "mean": 2.77,
+        "std": 0.41
+      },
+      "miti_global_mean": {
+        "mean": 2.67,
+        "std": 0.14
+      },
+      "n": 3,
+      "cost_usd": 0.0055
+    },
+    "mi-coach-grpo-iter2": {
+      "q1_session_mean": {
+        "mean": 2.53,
+        "std": 0.07
+      },
+      "q2_mean": {
+        "mean": 2.92,
+        "std": 0.37
+      },
+      "miti_global_mean": {
+        "mean": 2.92,
+        "std": 0.14
+      },
+      "n": 3,
+      "cost_usd": 0.0058
+    },
+    "mi-coach-grpo-iter3": {
+      "q1_session_mean": {
+        "mean": 2.93,
+        "std": 0.37
+      },
+      "q2_mean": {
+        "mean": 4.06,
+        "std": 0.21
+      },
+      "miti_global_mean": {
+        "mean": 3.42,
+        "std": 0.38
+      },
+      "n": 3,
+      "cost_usd": 0.0057
+    },
+    "mi-coach-grpo-iter4": {
+      "q1_session_mean": {
+        "mean": 3.36,
+        "std": 0.15
       },
       "q2_mean": {
         "mean": 4.29,
         "std": 0.0
       },
       "miti_global_mean": {
-        "mean": 4.33,
-        "std": 0.29
+        "mean": 3.83,
+        "std": 0.14
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0057
     },
-    "mi-coach-grpo-iter9": {
+    "mi-coach-grpo-iter5": {
       "q1_session_mean": {
-        "mean": 3.58,
-        "std": 0.04
+        "mean": 3.38,
+        "std": 0.39
       },
       "q2_mean": {
-        "mean": 4.27,
-        "std": 0.09
+        "mean": 3.98,
+        "std": 0.28
+      },
+      "miti_global_mean": {
+        "mean": 3.58,
+        "std": 0.29
+      },
+      "n": 3,
+      "cost_usd": 0.006
+    },
+    "mi-coach-grpo-iter6": {
+      "q1_session_mean": {
+        "mean": 3.31,
+        "std": 0.51
+      },
+      "q2_mean": {
+        "mean": 4.19,
+        "std": 0.17
       },
       "miti_global_mean": {
         "mean": 3.75,
         "std": 0.0
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0055
+    },
+    "mi-coach-grpo-iter7": {
+      "q1_session_mean": {
+        "mean": 3.56,
+        "std": 0.08
+      },
+      "q2_mean": {
+        "mean": 4.08,
+        "std": 0.24
+      },
+      "miti_global_mean": {
+        "mean": 3.83,
+        "std": 0.14
+      },
+      "n": 3,
+      "cost_usd": 0.0061
+    },
+    "mi-coach-grpo-iter8": {
+      "q1_session_mean": {
+        "mean": 3.69,
+        "std": 0.28
+      },
+      "q2_mean": {
+        "mean": 4.31,
+        "std": 0.03
+      },
+      "miti_global_mean": {
+        "mean": 4.42,
+        "std": 0.38
+      },
+      "n": 3,
+      "cost_usd": 0.0069
+    },
+    "mi-coach-grpo-iter9": {
+      "q1_session_mean": {
+        "mean": 3.78,
+        "std": 0.1
+      },
+      "q2_mean": {
+        "mean": 4.29,
+        "std": 0.0
+      },
+      "miti_global_mean": {
+        "mean": 3.83,
+        "std": 0.38
+      },
+      "n": 3,
+      "cost_usd": 0.006
     },
     "mi-coach-grpo-iter10": {
       "q1_session_mean": {
-        "mean": 3.27,
-        "std": 0.24
+        "mean": 3.36,
+        "std": 0.4
       },
       "q2_mean": {
-        "mean": 3.86,
-        "std": 0.28
+        "mean": 4.45,
+        "std": 0.29
       },
       "miti_global_mean": {
-        "mean": 3.92,
-        "std": 0.14
+        "mean": 4.25,
+        "std": 0.5
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0076
     },
     "meta-llama/Llama-3.2-1B": {
       "q1_session_mean": {
-        "mean": 2.58,
+        "mean": 2.6,
+        "std": 0.07
+      },
+      "q2_mean": {
+        "mean": 2.81,
+        "std": 0.39
+      },
+      "miti_global_mean": {
+        "mean": 2.75,
+        "std": 0.66
+      },
+      "n": 3,
+      "cost_usd": 0.0058
+    }
+  },
+  "aggregate_by_persona": {
+    "mi-coach-pto-iter1|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.11,
+        "std": 0.56
+      },
+      "q2_mean": {
+        "mean": 2.57,
+        "std": 1.11
+      },
+      "miti_global_mean": {
+        "mean": 2.25,
+        "std": 1.15
+      },
+      "n": 3,
+      "cost_usd": 0.0055
+    },
+    "mi-coach-pto-iter2|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.64,
+        "std": 0.65
+      },
+      "q2_mean": {
+        "mean": 3.53,
+        "std": 0.82
+      },
+      "miti_global_mean": {
+        "mean": 3.25,
+        "std": 0.66
+      },
+      "n": 3,
+      "cost_usd": 0.0056
+    },
+    "mi-coach-pto-iter3|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.64,
+        "std": 0.19
+      },
+      "q2_mean": {
+        "mean": 3.45,
+        "std": 0.17
+      },
+      "miti_global_mean": {
+        "mean": 3.33,
+        "std": 0.29
+      },
+      "n": 3,
+      "cost_usd": 0.0055
+    },
+    "mi-coach-pto-iter4|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.8,
         "std": 0.23
       },
       "q2_mean": {
-        "mean": 3.49,
-        "std": 0.78
+        "mean": 3.45,
+        "std": 0.27
       },
       "miti_global_mean": {
-        "mean": 3.08,
+        "mean": 3.67,
+        "std": 0.14
+      },
+      "n": 3,
+      "cost_usd": 0.0058
+    },
+    "mi-coach-pto-iter5|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.76,
+        "std": 0.58
+      },
+      "q2_mean": {
+        "mean": 3.63,
+        "std": 0.86
+      },
+      "miti_global_mean": {
+        "mean": 3.33,
+        "std": 0.72
+      },
+      "n": 3,
+      "cost_usd": 0.0061
+    },
+    "mi-coach-pto-iter6|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.84,
+        "std": 0.27
+      },
+      "q2_mean": {
+        "mean": 4.08,
+        "std": 0.19
+      },
+      "miti_global_mean": {
+        "mean": 3.75,
+        "std": 0.0
+      },
+      "n": 3,
+      "cost_usd": 0.0055
+    },
+    "mi-coach-pto-iter7|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.16,
+        "std": 0.54
+      },
+      "q2_mean": {
+        "mean": 4.13,
+        "std": 0.27
+      },
+      "miti_global_mean": {
+        "mean": 4.17,
+        "std": 0.58
+      },
+      "n": 3,
+      "cost_usd": 0.0062
+    },
+    "mi-coach-pto-iter8|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.44,
+        "std": 0.43
+      },
+      "q2_mean": {
+        "mean": 4.27,
+        "std": 0.03
+      },
+      "miti_global_mean": {
+        "mean": 4.08,
         "std": 0.38
       },
-      "n": 3
+      "n": 3,
+      "cost_usd": 0.0068
+    },
+    "mi-coach-pto-iter9|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.76,
+        "std": 0.28
+      },
+      "q2_mean": {
+        "mean": 4.57,
+        "std": 0.24
+      },
+      "miti_global_mean": {
+        "mean": 4.5,
+        "std": 0.0
+      },
+      "n": 3,
+      "cost_usd": 0.0071
+    },
+    "mi-coach-pto-iter10|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.64,
+        "std": 0.14
+      },
+      "q2_mean": {
+        "mean": 4.61,
+        "std": 0.28
+      },
+      "miti_global_mean": {
+        "mean": 4.5,
+        "std": 0.0
+      },
+      "n": 3,
+      "cost_usd": 0.0068
+    },
+    "mi-coach-grpo-iter1|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.22,
+        "std": 0.37
+      },
+      "q2_mean": {
+        "mean": 2.77,
+        "std": 0.41
+      },
+      "miti_global_mean": {
+        "mean": 2.67,
+        "std": 0.14
+      },
+      "n": 3,
+      "cost_usd": 0.0055
+    },
+    "mi-coach-grpo-iter2|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.53,
+        "std": 0.07
+      },
+      "q2_mean": {
+        "mean": 2.92,
+        "std": 0.37
+      },
+      "miti_global_mean": {
+        "mean": 2.92,
+        "std": 0.14
+      },
+      "n": 3,
+      "cost_usd": 0.0058
+    },
+    "mi-coach-grpo-iter3|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.93,
+        "std": 0.37
+      },
+      "q2_mean": {
+        "mean": 4.06,
+        "std": 0.21
+      },
+      "miti_global_mean": {
+        "mean": 3.42,
+        "std": 0.38
+      },
+      "n": 3,
+      "cost_usd": 0.0057
+    },
+    "mi-coach-grpo-iter4|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.36,
+        "std": 0.15
+      },
+      "q2_mean": {
+        "mean": 4.29,
+        "std": 0.0
+      },
+      "miti_global_mean": {
+        "mean": 3.83,
+        "std": 0.14
+      },
+      "n": 3,
+      "cost_usd": 0.0057
+    },
+    "mi-coach-grpo-iter5|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.38,
+        "std": 0.39
+      },
+      "q2_mean": {
+        "mean": 3.98,
+        "std": 0.28
+      },
+      "miti_global_mean": {
+        "mean": 3.58,
+        "std": 0.29
+      },
+      "n": 3,
+      "cost_usd": 0.006
+    },
+    "mi-coach-grpo-iter6|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.31,
+        "std": 0.51
+      },
+      "q2_mean": {
+        "mean": 4.19,
+        "std": 0.17
+      },
+      "miti_global_mean": {
+        "mean": 3.75,
+        "std": 0.0
+      },
+      "n": 3,
+      "cost_usd": 0.0055
+    },
+    "mi-coach-grpo-iter7|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.56,
+        "std": 0.08
+      },
+      "q2_mean": {
+        "mean": 4.08,
+        "std": 0.24
+      },
+      "miti_global_mean": {
+        "mean": 3.83,
+        "std": 0.14
+      },
+      "n": 3,
+      "cost_usd": 0.0061
+    },
+    "mi-coach-grpo-iter8|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.69,
+        "std": 0.28
+      },
+      "q2_mean": {
+        "mean": 4.31,
+        "std": 0.03
+      },
+      "miti_global_mean": {
+        "mean": 4.42,
+        "std": 0.38
+      },
+      "n": 3,
+      "cost_usd": 0.0069
+    },
+    "mi-coach-grpo-iter9|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.78,
+        "std": 0.1
+      },
+      "q2_mean": {
+        "mean": 4.29,
+        "std": 0.0
+      },
+      "miti_global_mean": {
+        "mean": 3.83,
+        "std": 0.38
+      },
+      "n": 3,
+      "cost_usd": 0.006
+    },
+    "mi-coach-grpo-iter10|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.36,
+        "std": 0.4
+      },
+      "q2_mean": {
+        "mean": 4.45,
+        "std": 0.29
+      },
+      "miti_global_mean": {
+        "mean": 4.25,
+        "std": 0.5
+      },
+      "n": 3,
+      "cost_usd": 0.0076
+    },
+    "meta-llama/Llama-3.2-1B|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.6,
+        "std": 0.07
+      },
+      "q2_mean": {
+        "mean": 2.81,
+        "std": 0.39
+      },
+      "miti_global_mean": {
+        "mean": 2.75,
+        "std": 0.66
+      },
+      "n": 3,
+      "cost_usd": 0.0058
     }
-  }
+  },
+  "total_cost_usd": 0.1275
 }
