@@ -76,9 +76,20 @@ Everything intelligent lives here. Read it top to bottom in five layers:
   accumulator using the `_PRICES_PER_MTOK` table. vLLM calls are local and free,
   so they're never counted.
 
-### 2b. The judge: `_judge()` and `_judge_named()`
+### 2b. The judge: `_judge()`, `_judge_named()`, and custom questionnaires
 
-One judge call = one questionnaire scored over the full transcript so far:
+One judge call = one questionnaire scored over the full transcript so far.
+`_structured_judge_call()` is the shared OpenAI structured-output call (rationale
+schema extension lives there); `_judge()` wraps it with the thesis prompt/schema
+builders, `_judge_custom()` with a generic prompt built from user-defined
+statements. **Custom questionnaires** (`CUSTOM_QUESTIONNAIRES`, persisted to
+`data/custom_questionnaires.json`, gitignored) are user-created instruments —
+name + statements, each rated 1-5; `_judge_named()` routes by name, and
+`questionnaire_blurbs()` / `known_questionnaires()` are what the UI and API use
+so custom instruments show up everywhere built-ins do. `_known()` silently drops
+names whose instrument was deleted mid-session.
+
+For thesis instruments:
 
 1. `questionnaires.get_prompt_eval_questionnaire()` (thesis code) builds the
    prompt and a **strict JSON schema** for the answer.
@@ -116,6 +127,11 @@ State is a `SessionState` TypedDict; the important convention is that
   receives the transcript *and* the judges' numbers and returns a structured
   `{overall_rating, summary, strengths, growth_areas, tip}`. The report also
   snapshots cumulative `usage`.
+- `compare_sessions()` (not a graph node) — the **comparative final review**:
+  one structured-output call that sees BOTH sessions' transcripts + reports and
+  returns `{preferred, summary, key_differences, a_strengths, b_strengths,
+  recommendation}`. The app caches it on both sessions as `session["comparison"]`
+  and counts its cost on side A.
 
 Usage accumulation across nodes: each node copies the incoming
 `state["openai_usage"]`, adds its own calls, and returns the new dict. LangGraph
@@ -193,17 +209,25 @@ session; the result is stored as a session too so it shows up in history), and
 `GET /health`. `AdvancedParams.as_dict()` drops `None`s so the API and UI feed
 the same partial-params shape into `resolve_params()`.
 
+Newer surfaces: `POST /compare/review` (body: two session ids → ensures both
+reports via `_ensure_report()`, then `compare_sessions()`; `_run_comparison()`
+is the shared helper the UI button uses too) and
+`GET|POST|DELETE /questionnaires` for custom instruments.
+
 ### 3d. The UI (`_build_ui()`)
 
 Reads the served model list from vLLM once at startup and parses it into
 method → iterations for the adapter pickers (★ marks thesis-best, from
 `BEST_ITER = {"pto": 10, "grpo": 8}`).
 
-Shared machinery used by all tabs:
+Shared machinery used by all tabs (module-level, above `_build_ui()`):
 
 - **Advanced settings accordion** (top of page): five components (`ADV`) +
-  rationale toggles + demo length. They are plain inputs wired into every
-  handler; `_ui_params()` converts them to a params dict per event.
+  rationale toggles + demo length (1-20 patient turns). They are plain inputs
+  wired into every handler; `_ui_params()` converts them to a params dict per
+  event. Below it, the **custom questionnaire accordion**: add/update/delete
+  instruments; its handlers are wired *last* in `_build_ui()` so they can
+  refresh the choices of all four judge CheckboxGroups across tabs.
 - `_get_or_create()` — sessions are keyed in `gr.State`; a send reuses the
   session unless the **model or role changed** (then a fresh session starts).
   Questionnaire selections, params, and rationale flags are re-synced from the
@@ -212,21 +236,36 @@ Shared machinery used by all tabs:
   empty assistant bubble, then yields growing text from
   `stream_therapist`/`stream_patient`, and finally appends the completed reply
   to the session transcript.
-- `_judge_last_turn()` / `_end_session()` — post-reply judging and the cached
-  report.
+- `_judge_last_turn()` / `_end_session()` (→ `_ensure_report()`) — post-reply
+  judging and the cached report.
+- `_demo_stream()` — the **streaming auto-demo engine**: replays the demo_graph
+  loop (patient → therapist → judge → … → report) turn by turn, yielding
+  `(history, event)` with events `chunk | scored | reporting | done`, so the
+  chat fills in live and the score panel updates after each judged turn.
+- `_merge_streams()` — runs two generators in worker threads and yields
+  `("a"|"b", item)` as items arrive; this is how the Compare tab streams both
+  demo sessions (including their blocking judge calls) concurrently.
+- `_scores_plot()` — the score timeline as a server-rendered **matplotlib**
+  figure in a `gr.Plot` (the native `gr.LinePlot` rendered blank under Gradio
+  6). Fixed CVD-safe palette slot per built-in instrument; custom instruments
+  draw dashed with hues from the far end of the palette.
 
 **Practice tab**: role radio (relabels the input box and hides the adapter
-pickers in therapist mode), chat, live `gr.LinePlot` score timeline fed by
-`_scores_df()`, and the scores panel markdown from `_scores_markdown()` (means
-per turn, italic rationales, report, star rating, usage/cost line). Auto-demo
-runs `run_demo()` and stores the result as a session.
+pickers in therapist mode), chat, the `_scores_plot()` timeline, and the scores
+panel markdown from `_scores_markdown()` (means per turn, italic rationales,
+report, star rating, usage/cost line). Auto-demo streams via `_demo_stream()`
+into a live `kind="demo"` session.
 
 **Compare tab**: everything twice. Two independent sessions (`kind="compare"`),
 same message sent to both; the two reply streams are interleaved with
 `zip_longest` so both bubbles grow together. Judging and reports for A and B
-run concurrently in a 2-worker `ThreadPoolExecutor`. "Auto-demo both" runs two
-full `run_demo()` sessions against the *same persona* in parallel. Export
-concatenates both sides' markdown.
+run concurrently in a 2-worker `ThreadPoolExecutor`. "Auto-demo both" streams
+two `_demo_stream()` sessions against the *same persona* concurrently via
+`_merge_streams()`. The **⚖️ Comparative review** button runs
+`_run_comparison()` (reports on demand, then `compare_sessions()`) and renders
+`_comparison_markdown()` under the buttons; the verdict is cached on both
+sessions and appears in history and exports. Export puts the verdict at the
+top and concatenates both sides' markdown.
 
 **History tab**: `_session_summary()` rows for every session this server run,
 a dropdown to open one (transcript + scores + report), and per-session export.
@@ -296,7 +335,7 @@ Copied in (never imported from the thesis repo), with origin headers:
 
 | You want to… | Touch |
 |---|---|
-| Add a questionnaire | `assets/thesis/questionnaires.py` knows it already? Just add to `QUESTIONNAIRES` in graph.py — UI/API pick it up automatically |
+| Add a questionnaire | thesis one: add to `QUESTIONNAIRES` in graph.py. Your own: the custom-questionnaire accordion / `POST /questionnaires` — no code at all |
 | Add an advanced knob | `DEFAULT_PARAMS` + the node that consumes it (graph.py), `AdvancedParams` (API), the accordion + `_ui_params` + handler input lists (UI) |
 | Change judge behavior | `_judge()` / `_judge_named()` in graph.py |
 | Change the report | `report_node` (instruments + supervisor prompt + `_ASSESSMENT_SCHEMA`) |

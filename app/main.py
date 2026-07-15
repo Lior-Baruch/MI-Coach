@@ -21,15 +21,23 @@ import uuid
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from itertools import zip_longest
+from queue import SimpleQueue
+from threading import Thread
 
 import gradio as gr
 import httpx
+import matplotlib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
+matplotlib.use("Agg")  # server-side rendering; handlers run off the main thread
+from matplotlib import ticker
+from matplotlib.figure import Figure
+
 from agent.graph import (
+    CUSTOM_QUESTIONNAIRES,
     DEFAULT_PARAMS,
     DEFAULT_REPORT_QUESTIONNAIRES,
     DEFAULT_TURN_QUESTIONNAIRES,
@@ -37,11 +45,16 @@ from agent.graph import (
     JUDGE_MODEL_CHOICES,
     PERSONA_OPTIONS,
     QUESTIONNAIRES,
+    add_custom_questionnaire,
     build_patient_persona,
+    compare_sessions,
+    delete_custom_questionnaire,
     empty_usage,
     initial_messages,
     judge_turn,
+    known_questionnaires,
     patient_node,
+    questionnaire_blurbs,
     run_demo,
     run_patient_turn,
     run_report,
@@ -64,9 +77,10 @@ SESSIONS: dict[str, dict] = {}
 
 
 def _validate_questionnaires(names: list[str]) -> list[str]:
-    unknown = [n for n in names if n not in QUESTIONNAIRES]
+    known = known_questionnaires()
+    unknown = [n for n in names if n not in known]
     if unknown:
-        raise HTTPException(status_code=422, detail=f"unknown questionnaires {unknown}; valid: {list(QUESTIONNAIRES)}")
+        raise HTTPException(status_code=422, detail=f"unknown questionnaires {unknown}; valid: {known}")
     return names
 
 
@@ -108,9 +122,20 @@ class PatientMessage(BaseModel):
     content: str
 
 
+class CompareReview(BaseModel):
+    session_a: str = Field(description="Session id of side A")
+    session_b: str = Field(description="Session id of side B")
+
+
+class CustomQuestionnaire(BaseModel):
+    name: str = Field(description="Instrument name (must not clash with a built-in)")
+    description: str = Field(default="", description="One-line blurb shown in pickers")
+    items: list[str] = Field(description="Statements about the therapist, each judged 1-5")
+
+
 class DemoRequest(BaseModel):
     model: str = Field(default=DEFAULT_MODEL)
-    max_patient_turns: int = Field(default=4, ge=1, le=8)
+    max_patient_turns: int = Field(default=4, ge=1, le=20)
     turn_questionnaires: list[str] = Field(default=DEFAULT_TURN_QUESTIONNAIRES)
     report_questionnaires: list[str] = Field(default=DEFAULT_REPORT_QUESTIONNAIRES)
     params: AdvancedParams = AdvancedParams()
@@ -197,6 +222,32 @@ def _advance(session: dict, user_message: str) -> dict:
     session["turn_scores"] = state.get("turn_scores", session["turn_scores"])
     session["usage"] = state.get("openai_usage", usage)
     return session["turn_scores"][-1] if judge and session["turn_scores"] else {}
+
+
+def _ensure_report(session: dict) -> dict:
+    """Generate (once) and cache the end-of-session report."""
+    if "report" not in session:
+        session["report"] = run_report(session["messages"], session["turn_scores"],
+                                       session["report_questionnaires"], session.get("params"),
+                                       session.get("report_rationale", False),
+                                       dict(session.get("usage") or empty_usage()))
+        session["usage"] = session["report"]["usage"]
+    return session["report"]
+
+
+def _run_comparison(sess_a: dict, sess_b: dict) -> dict:
+    """Comparative final review of two sessions: make sure both reports exist,
+    then one judge call over both transcripts+reports. Cached on both sessions;
+    the comparison call's cost is counted on side A."""
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        fa, fb = pool.submit(_ensure_report, sess_a), pool.submit(_ensure_report, sess_b)
+        fa.result(), fb.result()
+    cmp = compare_sessions(sess_a["model"], sess_a["messages"], sess_a["report"],
+                           sess_b["model"], sess_b["messages"], sess_b["report"],
+                           sess_a.get("params"), sess_a["usage"])
+    comparison = {"model_a": sess_a["model"], "model_b": sess_b["model"], **cmp}
+    sess_a["comparison"] = sess_b["comparison"] = comparison
+    return comparison
 
 
 async def _list_models() -> list[str]:
@@ -291,13 +342,7 @@ def session_report(session_id: str) -> dict:
         raise HTTPException(status_code=404, detail="unknown session")
     if not SCORING_ENABLED:
         raise HTTPException(status_code=503, detail="no OPENAI_API_KEY — judge disabled")
-    if "report" not in session:
-        session["report"] = run_report(session["messages"], session["turn_scores"],
-                                       session["report_questionnaires"], session.get("params"),
-                                       session.get("report_rationale", False),
-                                       dict(session.get("usage") or empty_usage()))
-        session["usage"] = session["report"]["usage"]
-    return session["report"]
+    return _ensure_report(session)
 
 
 @app.get("/sessions/{session_id}")
@@ -346,11 +391,63 @@ def demo(body: DemoRequest) -> dict:
     }
 
 
+@app.post("/compare/review")
+def compare_review(body: CompareReview) -> dict:
+    """Comparative final review between two sessions (reports generated if missing)."""
+    if not SCORING_ENABLED:
+        raise HTTPException(status_code=503, detail="no OPENAI_API_KEY — judge disabled")
+    sess_a, sess_b = SESSIONS.get(body.session_a), SESSIONS.get(body.session_b)
+    if sess_a is None or sess_b is None:
+        raise HTTPException(status_code=404, detail="unknown session")
+    if not sess_a["messages"] or not sess_b["messages"]:
+        raise HTTPException(status_code=422, detail="both sessions need at least one turn")
+    return _run_comparison(sess_a, sess_b)
+
+
+@app.get("/questionnaires")
+def list_questionnaires() -> dict:
+    """Selectable judge instruments: thesis built-ins + user-defined custom ones."""
+    return {"builtin": {name: blurb for name, (_, blurb) in QUESTIONNAIRES.items()},
+            "custom": CUSTOM_QUESTIONNAIRES}
+
+
+@app.post("/questionnaires", status_code=201)
+def create_questionnaire(body: CustomQuestionnaire) -> dict:
+    try:
+        add_custom_questionnaire(body.name, body.items, body.description)
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))
+    name = body.name.strip()
+    return {"name": name, **CUSTOM_QUESTIONNAIRES[name]}
+
+
+@app.delete("/questionnaires/{name}", status_code=204)
+def remove_questionnaire(name: str) -> None:
+    try:
+        delete_custom_questionnaire(name)
+    except KeyError:
+        raise HTTPException(status_code=404, detail=f"unknown custom questionnaire {name!r}")
+
+
 def _usage_line(usage: dict | None) -> str:
     if not usage or not usage.get("calls"):
         return ""
     return (f"*OpenAI usage: {usage['calls']} calls · {usage['prompt_tokens']:,} in / "
             f"{usage['completion_tokens']:,} out tokens · ~${usage['cost_usd']:.4f}*")
+
+
+def _comparison_markdown(cmp: dict, model_a: str, model_b: str) -> str:
+    """Render a compare_sessions() verdict as markdown."""
+    preferred = {"A": f"A (`{model_a}`)", "B": f"B (`{model_b}`)", "tie": "Tie"}[cmp["preferred"]]
+    return "\n".join([
+        f"### ⚖️ Comparative review — A: `{model_a}` vs B: `{model_b}`",
+        f"**Preferred: {preferred}**", "",
+        cmp["summary"], "",
+        "**Key differences:**", *[f"- {d}" for d in cmp["key_differences"]], "",
+        f"**Where A (`{model_a}`) is stronger:**", *[f"- {s}" for s in cmp["a_strengths"]], "",
+        f"**Where B (`{model_b}`) is stronger:**", *[f"- {s}" for s in cmp["b_strengths"]], "",
+        f"**Recommendation:** {cmp['recommendation']}",
+    ])
 
 
 def _session_markdown(session: dict) -> str:
@@ -387,6 +484,9 @@ def _session_markdown(session: dict) -> str:
                   "", "**Strengths:**", *[f"- {s}" for s in a["strengths"]],
                   "", "**Growth areas:**", *[f"- {g}" for g in a["growth_areas"]],
                   "", f"**Tip:** {a['tip']}"]
+    cmp = session.get("comparison")
+    if cmp:
+        lines += ["", _comparison_markdown(cmp, cmp["model_a"], cmp["model_b"])]
     usage = _usage_line(session.get("usage"))
     if usage:
         lines += ["", usage]
@@ -405,16 +505,59 @@ def export_session(session_id: str) -> str:
 
 
 BEST_ITER = {"pto": 10, "grpo": 8}  # thesis-best iteration per method
-_EMPTY_SCORES = pd.DataFrame(columns=["turn", "mean", "instrument"])
+
+# CVD-validated categorical palette (dataviz default, light mode). Each built-in
+# instrument keeps a fixed slot so its color follows it across sessions and tabs;
+# custom instruments take a slot by registry position and draw dashed.
+_PALETTE = ["#2a78d6", "#008300", "#e87ba4", "#eda100",
+            "#1baf7a", "#eb6834", "#4a3aa7", "#e34948"]
+_INSTRUMENT_COLORS = dict(zip(QUESTIONNAIRES, _PALETTE))
 
 
-def _scores_df(turn_scores: list[dict]) -> pd.DataFrame:
-    rows = [
-        {"turn": t["therapist_turns"] - 1, "mean": mean, "instrument": name}
-        for t in turn_scores
-        for name, mean in t["means"].items()
-    ]
-    return pd.DataFrame(rows) if rows else _EMPTY_SCORES
+def _series_style(name: str) -> dict:
+    color = _INSTRUMENT_COLORS.get(name)
+    if color:
+        return {"color": color, "linestyle": "-"}
+    customs = list(CUSTOM_QUESTIONNAIRES)
+    idx = customs.index(name) if name in customs else 0
+    # Walk the palette from the far end so a custom instrument doesn't share a
+    # hue with the common built-ins (Q1=blue, Q2=green) it's plotted next to.
+    return {"color": _PALETTE[(len(_PALETTE) - 1 - idx) % len(_PALETTE)], "linestyle": "--"}
+
+
+def _scores_plot(turn_scores: list[dict]) -> Figure | None:
+    """Score-timeline figure (mean per instrument per therapist turn).
+    Server-rendered matplotlib via gr.Plot — gr.LinePlot rendered blank on
+    Gradio 6, and markers keep even a single scored turn visible."""
+    series: dict[str, tuple[list[int], list[float]]] = {}
+    for t in turn_scores:
+        for name, mean in t["means"].items():
+            xs, ys = series.setdefault(name, ([], []))
+            xs.append(t["therapist_turns"] - 1)
+            ys.append(mean)
+    if not series:
+        return None
+    fig = Figure(figsize=(5.4, 2.6), dpi=100)
+    ax = fig.add_subplot()
+    order = {n: i for i, n in enumerate(known_questionnaires())}
+    for name in sorted(series, key=lambda n: order.get(n, len(order))):
+        xs, ys = series[name]
+        ax.plot(xs, ys, marker="o", markersize=6, linewidth=1.5,
+                label=name, **_series_style(name))
+    ax.set_ylim(0.7, 5.3)
+    ax.set_yticks(range(1, 6))
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
+    ax.set_xlabel("therapist turn", fontsize=8)
+    ax.set_ylabel("mean score (1–5)", fontsize=8)
+    ax.tick_params(labelsize=8)
+    ax.grid(True, alpha=0.25)
+    ax.spines[["top", "right"]].set_visible(False)
+    if len(series) > 1:
+        ax.legend(fontsize=7, frameon=False, loc="best")
+    else:
+        ax.set_title(next(iter(series)), fontsize=9)
+    fig.tight_layout()
+    return fig
 
 
 def _scores_markdown(turn_scores: list[dict], report: dict | None = None,
@@ -455,6 +598,108 @@ def _scores_markdown(turn_scores: list[dict], report: dict | None = None,
     return "\n".join(lines)
 
 
+def _stream_reply(session, user_msg, history):
+    """Append the human turn + stream the counterpart's reply.
+    Yields updated history; the session transcript is finalized at the end."""
+    role = session["role"]
+    session["messages"].append(
+        {"role": "assistant" if role == "therapist" else "user", "content": user_msg})
+    history = history + [{"role": "user", "content": user_msg},
+                         {"role": "assistant", "content": ""}]
+    yield history
+    if role == "therapist":
+        gen = stream_patient(session["messages"], session["patient_persona"],
+                             session["params"], session["usage"])
+    else:
+        gen = stream_therapist(session["messages"], session["model"], session["params"])
+    reply = ""
+    for reply in gen:
+        history[-1]["content"] = reply
+        yield history
+    session["messages"].append(
+        {"role": "user" if role == "therapist" else "assistant", "content": reply})
+
+
+def _judge_last_turn(session):
+    if not SCORING_ENABLED or not session["turn_questionnaires"]:
+        return
+    out = judge_turn(session["messages"], session["turn_scores"],
+                     session["turn_questionnaires"], session["params"],
+                     session["turn_rationale"], session["usage"])
+    session["turn_scores"] = out["turn_scores"]
+    session["usage"] = out["openai_usage"]
+
+
+def _end_session(session):
+    """Run (or fetch) the end-of-session report."""
+    if session is None or not SCORING_ENABLED or not session["messages"]:
+        return None
+    return _ensure_report(session)
+
+
+def _demo_stream(session, demo_turns):
+    """Full simulated session on `session`, streamed. Yields (chat_history, event)
+    with event "chunk" | "scored" | "reporting" | "done". Mirrors demo_graph
+    (patient -> therapist -> judge -> loop -> report) but token-by-token,
+    following the stream-then-judge pattern."""
+    messages = session["messages"]
+    history = [{"role": "assistant", "content": GREETING}]
+    yield list(history), "chunk"
+    for _ in range(int(demo_turns)):
+        history.append({"role": "user", "content": ""})
+        reply = ""
+        for reply in stream_patient(messages, session["patient_persona"],
+                                    session["params"], session["usage"]):
+            history[-1] = {"role": "user", "content": reply}  # fresh dict: old yields stay immutable
+            yield list(history), "chunk"
+        messages.append({"role": "user", "content": reply})
+        if "SESSION ENDED" in reply:
+            break
+        history.append({"role": "assistant", "content": ""})
+        reply = ""
+        for reply in stream_therapist(messages, session["model"], session["params"]):
+            history[-1] = {"role": "assistant", "content": reply}
+            yield list(history), "chunk"
+        messages.append({"role": "assistant", "content": reply})
+        if session["turn_questionnaires"]:
+            _judge_last_turn(session)
+            yield list(history), "scored"
+        if "SESSION ENDED" in reply:
+            break
+    yield list(history), "reporting"
+    _end_session(session)
+    yield list(history), "done"
+
+
+def _merge_streams(gen_a, gen_b):
+    """Drive two generators in worker threads; yield ("a"|"b", item) as items
+    arrive, so both sides stream concurrently (incl. their blocking judge calls)."""
+    q: SimpleQueue = SimpleQueue()
+
+    def pump(tag, gen):
+        try:
+            for item in gen:
+                q.put((tag, item, None))
+            q.put((tag, None, StopIteration))
+        except Exception as e:  # re-raised in the UI thread below
+            q.put((tag, None, e))
+
+    for tag, gen in (("a", gen_a), ("b", gen_b)):
+        Thread(target=pump, args=(tag, gen), daemon=True).start()
+    done, error = 0, None
+    while done < 2:
+        tag, item, exc = q.get()
+        if exc is StopIteration:
+            done += 1
+        elif exc is not None:
+            error = error or exc
+            done += 1
+        else:
+            yield tag, item
+    if error is not None:
+        raise error
+
+
 def _export_file(name: str, content: str) -> str:
     path = os.path.join(tempfile.mkdtemp(prefix="mi-coach-"), name)
     with open(path, "w") as f:
@@ -492,7 +737,10 @@ def _build_ui() -> gr.Blocks:
         def _model_name(method: str, iteration: int) -> str:
             return base_model if method == "base" else f"mi-coach-{method}-iter{iteration}"
 
-        q_choices = [(f"{name} — {blurb}", name) for name, (_, blurb) in QUESTIONNAIRES.items()]
+        def _q_choices():
+            return [(f"{name} — {blurb}", name) for name, blurb in questionnaire_blurbs().items()]
+
+        q_choices = _q_choices()
         initial_chat = [{"role": "assistant", "content": GREETING}]
         method_choices = [(m.upper(), m) for m in methods] + [("Base model (no adapter)", "base")]
         default_method = "pto" if "pto" in methods else methods[0]
@@ -535,11 +783,31 @@ def _build_ui() -> gr.Blocks:
                                         label="Judge model (report + per-turn)")
                 adv_seed = gr.Textbox(value="", label="Seed (blank = unseeded)",
                                       placeholder="e.g. 42")
-                adv_demo_turns = gr.Slider(1, 8, value=3, step=1,
+                adv_demo_turns = gr.Slider(1, 20, value=3, step=1,
                                            label="Auto-demo length (patient turns)")
             with gr.Row():
                 adv_turn_rat = gr.Checkbox(False, label="Judge rationale per turn (one sentence per instrument)")
                 adv_report_rat = gr.Checkbox(False, label="Judge rationale in the session report")
+
+        # ------------------------------------------- custom questionnaires
+        with gr.Accordion("Custom questionnaire (build your own judge instrument)", open=False):
+            gr.Markdown("Define your own instrument: the judge rates each statement about the "
+                        "**therapist** 1–5 over the running transcript, exactly like the thesis "
+                        "questionnaires. Saved to `data/custom_questionnaires.json`; select it "
+                        "in any judge list below (re-using a name overwrites it).")
+            with gr.Row():
+                cq_name = gr.Textbox(label="Name", placeholder="e.g. LISTEN-3", scale=1)
+                cq_desc = gr.Textbox(label="One-line description (optional)", scale=2)
+            cq_items = gr.Textbox(
+                label="Statements — one per line, each rated 1-5",
+                lines=4,
+                placeholder="The therapist let the patient do most of the talking.\n"
+                            "The therapist avoided giving unsolicited advice.")
+            with gr.Row():
+                cq_add = gr.Button("Add / update questionnaire", variant="primary", size="sm")
+                cq_del_dd = gr.Dropdown(sorted(CUSTOM_QUESTIONNAIRES), label="Existing custom questionnaire")
+                cq_del = gr.Button("Delete selected", size="sm")
+            cq_status = gr.Markdown()
 
         ADV = [adv_t_temp, adv_t_max, adv_p_temp, adv_judge, adv_seed]
 
@@ -568,48 +836,6 @@ def _build_ui() -> gr.Blocks:
                                params=params, turn_rationale=turn_rat, report_rationale=report_rat)
             return session
 
-        def _stream_reply(session, user_msg, history):
-            """Append the human turn + stream the counterpart's reply.
-            Yields updated history; the session transcript is finalized at the end."""
-            role = session["role"]
-            session["messages"].append(
-                {"role": "assistant" if role == "therapist" else "user", "content": user_msg})
-            history = history + [{"role": "user", "content": user_msg},
-                                 {"role": "assistant", "content": ""}]
-            yield history
-            if role == "therapist":
-                gen = stream_patient(session["messages"], session["patient_persona"],
-                                     session["params"], session["usage"])
-            else:
-                gen = stream_therapist(session["messages"], session["model"], session["params"])
-            reply = ""
-            for reply in gen:
-                history[-1]["content"] = reply
-                yield history
-            session["messages"].append(
-                {"role": "user" if role == "therapist" else "assistant", "content": reply})
-
-        def _judge_last_turn(session):
-            if not SCORING_ENABLED or not session["turn_questionnaires"]:
-                return
-            out = judge_turn(session["messages"], session["turn_scores"],
-                             session["turn_questionnaires"], session["params"],
-                             session["turn_rationale"], session["usage"])
-            session["turn_scores"] = out["turn_scores"]
-            session["usage"] = out["openai_usage"]
-
-        def _end_session(session):
-            """Run (or fetch) the end-of-session report."""
-            if session is None or not SCORING_ENABLED or not session["messages"]:
-                return None
-            if "report" not in session:
-                session["report"] = run_report(session["messages"], session["turn_scores"],
-                                               session["report_questionnaires"], session["params"],
-                                               session.get("report_rationale", False),
-                                               dict(session["usage"]))
-                session["usage"] = session["report"]["usage"]
-            return session["report"]
-
         # ------------------------------------------------------------ practice
         with gr.Tab("Practice"):
             with gr.Row():
@@ -637,8 +863,7 @@ def _build_ui() -> gr.Blocks:
                                                label="Live judge (every turn — 1 gpt-4o-mini call each; none = off)")
                     report_qs = gr.CheckboxGroup(q_choices, value=DEFAULT_REPORT_QUESTIONNAIRES,
                                                  label="Report judge (at session end)")
-                    score_plot = gr.LinePlot(_EMPTY_SCORES, x="turn", y="mean", color="instrument",
-                                             y_lim=[1, 5], label="Score timeline", height=220)
+                    score_plot = gr.Plot(label="Score timeline")
                     scores_md = gr.Markdown(_scores_markdown([]))
             state = gr.State(None)  # session id
 
@@ -662,7 +887,7 @@ def _build_ui() -> gr.Blocks:
                 for history in _stream_reply(session, user_msg, history):
                     yield "", history, session_id, gr.update(), gr.update()
                 _judge_last_turn(session)
-                yield ("", history, session_id, _scores_df(session["turn_scores"]),
+                yield ("", history, session_id, _scores_plot(session["turn_scores"]),
                        _scores_markdown(session["turn_scores"], usage=session["usage"]))
 
             def on_role(role):
@@ -677,23 +902,39 @@ def _build_ui() -> gr.Blocks:
 
             def on_end(session_id):
                 session = SESSIONS.get(session_id)
-                report = _end_session(session)
-                if report is None:
-                    return gr.update()
-                return _scores_markdown(session["turn_scores"], report, session["usage"])
+                if session is None or not SCORING_ENABLED or not session["messages"]:
+                    yield gr.update()
+                    return
+                if "report" not in session:
+                    yield (_scores_markdown(session["turn_scores"], usage=session["usage"])
+                           + "\n\n⏳ *Generating session report…*")
+                _end_session(session)
+                yield _scores_markdown(session["turn_scores"], session["report"], session["usage"])
 
             def on_demo(method, iteration, turn_q, report_q, gender, age, problem, ptime, tried, coop,
                         t_temp, t_max, p_temp, judge_model, seed, turn_rat, report_rat, demo_turns):
+                if not SCORING_ENABLED:
+                    raise gr.Error("Auto-demo needs OPENAI_API_KEY (simulated patient).")
                 params = _ui_params(t_temp, t_max, p_temp, judge_model, seed)
                 persona = build_patient_persona(gender, age, problem, ptime, tried, coop)
-                state_out = run_demo(_model_name(method, iteration), max_patient_turns=int(demo_turns),
-                                     patient_system_prompt=persona,
-                                     turn_questionnaires=turn_q or None, report_questionnaires=report_q or None,
-                                     params=params, turn_rationale=turn_rat, report_rationale=report_rat)
-                session = _store_demo_session(_model_name(method, iteration), state_out, persona)
-                history = [{"role": m["role"], "content": m["content"]} for m in state_out["messages"][1:]]
-                return (history, session["id"], _scores_df(state_out["turn_scores"]),
-                        _scores_markdown(state_out["turn_scores"], state_out["report"], session["usage"]))
+                session = _new_session(_model_name(method, iteration), list(turn_q), list(report_q),
+                                       role="patient", patient_persona=persona, params=params,
+                                       turn_rationale=turn_rat, report_rationale=report_rat,
+                                       kind="demo")
+                for history, event in _demo_stream(session, demo_turns):
+                    if event == "chunk":
+                        yield history, session["id"], gr.update(), gr.update()
+                    elif event == "scored":
+                        yield (history, session["id"], _scores_plot(session["turn_scores"]),
+                               _scores_markdown(session["turn_scores"], usage=session["usage"]))
+                    elif event == "reporting":
+                        yield (history, session["id"], gr.update(),
+                               _scores_markdown(session["turn_scores"], usage=session["usage"])
+                               + "\n\n⏳ *Generating session report…*")
+                    else:
+                        yield (history, session["id"], _scores_plot(session["turn_scores"]),
+                               _scores_markdown(session["turn_scores"], session.get("report"),
+                                                session["usage"]))
 
             def on_export(session_id):
                 session = SESSIONS.get(session_id)
@@ -703,7 +944,7 @@ def _build_ui() -> gr.Blocks:
                 return gr.update(value=path, visible=True)
 
             def on_reset():
-                return list(initial_chat), None, _EMPTY_SCORES, _scores_markdown([]), gr.update(visible=False)
+                return list(initial_chat), None, None, _scores_markdown([]), gr.update(visible=False)
 
             send_inputs = [msg, chat, state, method_dd, iter_dd, turn_qs, report_qs,
                            role_radio, *personas, *ADV, adv_turn_rat, adv_report_rat]
@@ -721,19 +962,19 @@ def _build_ui() -> gr.Blocks:
         with gr.Tab("Compare (A/B)"):
             gr.Markdown("Drive **two checkpoints side by side**: send the same patient message to "
                         "both, or let the simulated patient run a full auto-demo against each. "
-                        "End the session to get a full report per side.")
+                        "End the session to get a full report per side, then run the "
+                        "**comparative review** — one judge call that reads both transcripts and "
+                        "reports and says how the models differ.")
             with gr.Row():
                 with gr.Column():
                     method_a, iter_a = _adapter_pickers(" — A")
                     chat_a = gr.Chatbot(value=list(initial_chat), label="A", height=360)
-                    plot_a = gr.LinePlot(_EMPTY_SCORES, x="turn", y="mean", color="instrument",
-                                         y_lim=[1, 5], label="A score timeline", height=180)
+                    plot_a = gr.Plot(label="A score timeline")
                     scores_a = gr.Markdown(_scores_markdown([]))
                 with gr.Column():
                     method_b, iter_b = _adapter_pickers(" — B", method="grpo")
                     chat_b = gr.Chatbot(value=list(initial_chat), label="B", height=360)
-                    plot_b = gr.LinePlot(_EMPTY_SCORES, x="turn", y="mean", color="instrument",
-                                         y_lim=[1, 5], label="B score timeline", height=180)
+                    plot_b = gr.Plot(label="B score timeline")
                     scores_b = gr.Markdown(_scores_markdown([]))
             with gr.Row():
                 cmp_turn_qs = gr.CheckboxGroup(q_choices, value=DEFAULT_TURN_QUESTIONNAIRES,
@@ -747,15 +988,17 @@ def _build_ui() -> gr.Blocks:
                 cmp_send = gr.Button("Send to both", variant="primary")
                 cmp_demo = gr.Button("Auto-demo both (simulated patient)")
                 cmp_end = gr.Button("End sessions → reports")
+                cmp_review = gr.Button("⚖️ Comparative review (A vs B)")
                 cmp_export = gr.Button("Export comparison (.md)")
                 cmp_reset = gr.Button("New comparison")
+            cmp_verdict = gr.Markdown()
             cmp_file = gr.File(label="Comparison export", visible=False)
             sid_a, sid_b = gr.State(None), gr.State(None)
 
             def _cmp_outputs(sess_a, sess_b, with_reports=False):
                 rep_a = sess_a.get("report") if with_reports else None
                 rep_b = sess_b.get("report") if with_reports else None
-                return (_scores_df(sess_a["turn_scores"]), _scores_df(sess_b["turn_scores"]),
+                return (_scores_plot(sess_a["turn_scores"]), _scores_plot(sess_b["turn_scores"]),
                         _scores_markdown(sess_a["turn_scores"], rep_a, sess_a["usage"]),
                         _scores_markdown(sess_b["turn_scores"], rep_b, sess_b["usage"]))
 
@@ -795,52 +1038,93 @@ def _build_ui() -> gr.Blocks:
                             gender, age, problem, ptime, tried, coop,
                             t_temp, t_max, p_temp, judge_model, seed,
                             turn_rat, report_rat, demo_turns):
+                if not SCORING_ENABLED:
+                    raise gr.Error("Auto-demo needs OPENAI_API_KEY (simulated patient).")
                 params = _ui_params(t_temp, t_max, p_temp, judge_model, seed)
                 persona = build_patient_persona(gender, age, problem, ptime, tried, coop)
 
-                def run_side(method, iteration):
-                    model = _model_name(method, iteration)
-                    state_out = run_demo(model, max_patient_turns=int(demo_turns),
-                                         patient_system_prompt=persona,
-                                         turn_questionnaires=turn_q or None,
-                                         report_questionnaires=report_q or None,
-                                         params=params, turn_rationale=turn_rat,
-                                         report_rationale=report_rat)
-                    return _store_demo_session(model, state_out, persona, kind="compare")
+                def new_side(method, iteration):
+                    return _new_session(_model_name(method, iteration), list(turn_q), list(report_q),
+                                        role="patient", patient_persona=persona, params=params,
+                                        turn_rationale=turn_rat, report_rationale=report_rat,
+                                        kind="compare")
 
-                with ThreadPoolExecutor(max_workers=2) as pool:
-                    fa = pool.submit(run_side, m_a, i_a)
-                    fb = pool.submit(run_side, m_b, i_b)
-                    sess_a, sess_b = fa.result(), fb.result()
-                hist_a = [{"role": m["role"], "content": m["content"]} for m in sess_a["messages"][1:]]
-                hist_b = [{"role": m["role"], "content": m["content"]} for m in sess_b["messages"][1:]]
-                return (hist_a, hist_b, sess_a["id"], sess_b["id"],
-                        *_cmp_outputs(sess_a, sess_b, with_reports=True))
+                sides = {"a": new_side(m_a, i_a), "b": new_side(m_b, i_b)}
+
+                def side_updates(session, item):
+                    """(chat, plot, md) updates for one side's stream event."""
+                    history, event = item
+                    if event == "chunk":
+                        return history, gr.update(), gr.update()
+                    if event == "reporting":
+                        return (history, gr.update(),
+                                _scores_markdown(session["turn_scores"], usage=session["usage"])
+                                + "\n\n⏳ *Generating session report…*")
+                    return (history, _scores_plot(session["turn_scores"]),
+                            _scores_markdown(session["turn_scores"],
+                                             session.get("report") if event == "done" else None,
+                                             session["usage"]))
+
+                # Both sides stream concurrently; each event updates only its side.
+                merged = _merge_streams(_demo_stream(sides["a"], demo_turns),
+                                        _demo_stream(sides["b"], demo_turns))
+                for tag, item in merged:
+                    chat, plot, md = side_updates(sides[tag], item)
+                    if tag == "a":
+                        yield (chat, gr.update(), sides["a"]["id"], sides["b"]["id"],
+                               plot, gr.update(), md, gr.update())
+                    else:
+                        yield (gr.update(), chat, sides["a"]["id"], sides["b"]["id"],
+                               gr.update(), plot, gr.update(), md)
 
             def on_cmp_end(a_id, b_id):
                 sess_a, sess_b = SESSIONS.get(a_id), SESSIONS.get(b_id)
                 if sess_a is None or sess_b is None:
-                    return gr.update(), gr.update(), gr.update(), gr.update()
+                    yield gr.update(), gr.update(), gr.update(), gr.update()
+                    return
+                if "report" not in sess_a or "report" not in sess_b:
+                    wait = "\n\n⏳ *Generating session report…*"
+                    yield (gr.update(), gr.update(),
+                           _scores_markdown(sess_a["turn_scores"], usage=sess_a["usage"]) + wait,
+                           _scores_markdown(sess_b["turn_scores"], usage=sess_b["usage"]) + wait)
                 with ThreadPoolExecutor(max_workers=2) as pool:
                     fa = pool.submit(_end_session, sess_a)
                     fb = pool.submit(_end_session, sess_b)
                     fa.result(), fb.result()
-                return _cmp_outputs(sess_a, sess_b, with_reports=True)
+                yield _cmp_outputs(sess_a, sess_b, with_reports=True)
+
+            def on_cmp_review(a_id, b_id):
+                sess_a, sess_b = SESSIONS.get(a_id), SESSIONS.get(b_id)
+                if sess_a is None or sess_b is None:
+                    raise gr.Error("Send a message to both sides (or run an auto-demo) first.")
+                if not SCORING_ENABLED:
+                    raise gr.Error("Comparative review needs OPENAI_API_KEY.")
+                yield ("⏳ *Scoring both sessions and comparing the models…*",
+                       gr.update(), gr.update())
+                comparison = _run_comparison(sess_a, sess_b)
+                # Reports may have just been generated — refresh both score panels too.
+                yield (_comparison_markdown(comparison, sess_a["model"], sess_b["model"]),
+                       _scores_markdown(sess_a["turn_scores"], sess_a["report"], sess_a["usage"]),
+                       _scores_markdown(sess_b["turn_scores"], sess_b["report"], sess_b["usage"]))
 
             def on_cmp_export(a_id, b_id):
                 sess_a, sess_b = SESSIONS.get(a_id), SESSIONS.get(b_id)
                 if sess_a is None or sess_b is None:
                     return gr.update(visible=False)
+                cmp = sess_a.get("comparison")
+                # The verdict goes at the top; strip it from the per-side markdown.
+                strip = lambda s: {k: v for k, v in s.items() if k != "comparison"}
                 content = (f"# MI Coach A/B comparison — `{sess_a['model']}` vs `{sess_b['model']}`\n\n"
-                           f"# Side A\n\n{_session_markdown(sess_a)}\n\n"
-                           f"# Side B\n\n{_session_markdown(sess_b)}")
+                           + (f"{_comparison_markdown(cmp, cmp['model_a'], cmp['model_b'])}\n\n" if cmp else "")
+                           + f"# Side A\n\n{_session_markdown(strip(sess_a))}\n\n"
+                           f"# Side B\n\n{_session_markdown(strip(sess_b))}")
                 path = _export_file(f"compare-{sess_a['id']}-vs-{sess_b['id']}.md", content)
                 return gr.update(value=path, visible=True)
 
             def on_cmp_reset():
                 return (list(initial_chat), list(initial_chat), None, None,
-                        _EMPTY_SCORES, _EMPTY_SCORES, _scores_markdown([]), _scores_markdown([]),
-                        gr.update(visible=False))
+                        None, None, _scores_markdown([]), _scores_markdown([]),
+                        "", gr.update(visible=False))
 
             cmp_send_inputs = [cmp_msg, chat_a, chat_b, sid_a, sid_b,
                                method_a, iter_a, method_b, iter_b, cmp_turn_qs, cmp_report_qs,
@@ -854,9 +1138,11 @@ def _build_ui() -> gr.Blocks:
                             *cmp_personas, *ADV, adv_turn_rat, adv_report_rat, adv_demo_turns],
                            [chat_a, chat_b, sid_a, sid_b, plot_a, plot_b, scores_a, scores_b])
             cmp_end.click(on_cmp_end, [sid_a, sid_b], [plot_a, plot_b, scores_a, scores_b])
+            cmp_review.click(on_cmp_review, [sid_a, sid_b], [cmp_verdict, scores_a, scores_b])
             cmp_export.click(on_cmp_export, [sid_a, sid_b], [cmp_file])
             cmp_reset.click(on_cmp_reset, None,
-                            [chat_a, chat_b, sid_a, sid_b, plot_a, plot_b, scores_a, scores_b, cmp_file])
+                            [chat_a, chat_b, sid_a, sid_b, plot_a, plot_b, scores_a, scores_b,
+                             cmp_verdict, cmp_file])
 
         # ------------------------------------------------------------- history
         with gr.Tab("History"):
@@ -889,8 +1175,12 @@ def _build_ui() -> gr.Blocks:
                     return [], ""
                 history = [{"role": m["role"], "content": m["content"]}
                            for m in session["messages"] if m["role"] in ("user", "assistant")]
-                return history, _scores_markdown(session["turn_scores"], session.get("report"),
-                                                 session.get("usage"))
+                md = _scores_markdown(session["turn_scores"], session.get("report"),
+                                      session.get("usage"))
+                cmp = session.get("comparison")
+                if cmp:
+                    md += "\n\n" + _comparison_markdown(cmp, cmp["model_a"], cmp["model_b"])
+                return history, md
 
             def on_hist_export(session_id):
                 session = SESSIONS.get(session_id)
@@ -902,6 +1192,41 @@ def _build_ui() -> gr.Blocks:
             hist_refresh.click(on_hist_refresh, None, [hist_table, hist_dd])
             hist_dd.change(on_hist_pick, [hist_dd], [hist_chat, hist_scores])
             hist_export.click(on_hist_export, [hist_dd], [hist_file])
+
+        # Custom-questionnaire wiring — registered last so it can refresh every
+        # judge CheckboxGroup across the tabs (choices update, selections kept).
+        qs_lists = [turn_qs, report_qs, cmp_turn_qs, cmp_report_qs]
+
+        def _qs_updates(selections, dropped: str | None = None):
+            return [gr.update(choices=_q_choices(),
+                              value=[v for v in sel if v != dropped])
+                    for sel in selections]
+
+        def on_cq_add(name, desc, items_text, *selections):
+            try:
+                add_custom_questionnaire(name, str(items_text).splitlines(), desc)
+            except ValueError as e:
+                return (f"⚠️ {e}", gr.update(), *[gr.update()] * len(selections))
+            name = name.strip()
+            n = len(CUSTOM_QUESTIONNAIRES[name]["items"])
+            return (f"✅ **{name}** saved ({n} item{'s' if n != 1 else ''}) — selectable in "
+                    "every judge list, scored 1-5 like the thesis instruments.",
+                    gr.update(choices=sorted(CUSTOM_QUESTIONNAIRES), value=None),
+                    *_qs_updates(selections))
+
+        def on_cq_del(name, *selections):
+            if not name:
+                return ("*Pick a custom questionnaire to delete.*",
+                        gr.update(), *[gr.update()] * len(selections))
+            delete_custom_questionnaire(name)
+            return (f"🗑️ Deleted **{name}**.",
+                    gr.update(choices=sorted(CUSTOM_QUESTIONNAIRES), value=None),
+                    *_qs_updates(selections, dropped=name))
+
+        cq_add.click(on_cq_add, [cq_name, cq_desc, cq_items, *qs_lists],
+                     [cq_status, cq_del_dd, *qs_lists])
+        cq_del.click(on_cq_del, [cq_del_dd, *qs_lists],
+                     [cq_status, cq_del_dd, *qs_lists])
     return ui
 
 

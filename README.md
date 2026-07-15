@@ -158,23 +158,33 @@ With the vLLM server running:
     level, age, …) responds and **the judges score you** — that's the "coach" in MI Coach.
   - Pick the method (PTO/GRPO/base) and training iteration (thesis-best marked ★), and
     choose which questionnaires judge live each turn vs. in the final report (or none —
-    per-turn judging can be switched off entirely). Replies **stream** token by token.
+    per-turn judging can be switched off entirely). Everything **streams** token by
+    token — interactive replies *and* full auto-demo sessions (each simulated turn
+    appears as it is generated, scores update turn by turn).
+  - **Custom questionnaires**: define your own judge instrument (name + statements,
+    each rated 1–5 over the transcript like the thesis instruments); it becomes
+    selectable in every judge list and persists across restarts.
   - Live score timeline chart with optional **judge rationales**; *End session → report*
     for per-instrument scores plus an **overall assessment** (a reviewer model weighs
     the transcript *and* the judges' scores: rating /5, strengths, growth areas, one
     concrete tip). Each session shows its actual OpenAI token usage and cost.
   - **Compare (A/B) tab** with full practice parity: send the same patient message to
-    two checkpoints, or auto-demo both against the same simulated persona — per-side
-    score timelines, end-of-session reports, and a combined markdown export.
+    two checkpoints, or auto-demo both against the same simulated persona (up to 20
+    patient turns) — per-side score timelines, end-of-session reports, a combined
+    markdown export, and a **comparative review**: one judge call that reads both
+    transcripts and reports and returns a structured verdict (preferred model, key
+    behavioral differences, per-side strengths, recommendation).
   - **History tab**: browse every session of the server run (practice, compare, demo)
-    with transcript, scores, report, and export.
+    with transcript, scores, report, comparison verdict, and export.
   - **Advanced settings** (apply everywhere): therapist/patient temperatures, max
     tokens, judge model, sampling seed, auto-demo length, rationale toggles.
   - Export any session as markdown (UI button or `GET /sessions/{id}/export`).
 - **API:** `POST /sessions` (model, your role, persona, questionnaires, generation
   `params`, rationale flags) → `POST /sessions/{id}/message` (returns the reply,
   per-turn judge scores, cumulative usage/cost) → `POST /sessions/{id}/report`;
-  `POST /demo` runs a full simulated session; `GET /sessions` lists them.
+  `POST /demo` runs a full simulated session; `GET /sessions` lists them;
+  `POST /compare/review` runs the A-vs-B comparative review between two sessions;
+  `GET|POST|DELETE /questionnaires` manages custom judge instruments.
   OpenAPI docs at `/docs`; `GET /health`.
   Sessions are in-memory (practice tool, not a clinical record store).
 - Set `OPENAI_API_KEY` (e.g. in `.env`) to enable judging; without it the app degrades
