@@ -1,10 +1,11 @@
 """MI Coach app: FastAPI session API + Gradio practice UI in one service.
 
-The user plays the *patient*; the served thesis model plays the therapist.
-Phase 3: every therapist turn is scored live by an LLM judge (gpt-4o-mini +
-thesis questionnaire Q1) via the LangGraph agent in agent/graph.py; sessions
-can end with a full feedback report (Q2 + MITI + supervisor narrative), and an
-auto-demo mode runs a simulated patient instead of the human.
+The user plays the *patient* (the served thesis model is the therapist) or the
+*therapist* (a simulated patient responds and the judges score the human).
+Every therapist turn can be scored live by an LLM judge (thesis questionnaires,
+gpt-4o-mini) via the LangGraph agent in agent/graph.py; sessions end with a
+full feedback report (Q2 + MITI + supervisor narrative). Auto-demo mode runs a
+simulated patient; the Compare tab drives two checkpoints side by side.
 
 Sessions are held in memory (practice tool, not a clinical record store).
 
@@ -17,6 +18,9 @@ Env:  VLLM_URL        vLLM OpenAI endpoint   (default http://localhost:8000/v1)
 import os
 import tempfile
 import uuid
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime
+from itertools import zip_longest
 
 import gradio as gr
 import httpx
@@ -26,17 +30,25 @@ from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, Field
 
 from agent.graph import (
+    DEFAULT_PARAMS,
     DEFAULT_REPORT_QUESTIONNAIRES,
     DEFAULT_TURN_QUESTIONNAIRES,
     GREETING,
+    JUDGE_MODEL_CHOICES,
     PERSONA_OPTIONS,
     QUESTIONNAIRES,
     build_patient_persona,
+    empty_usage,
     initial_messages,
+    judge_turn,
+    patient_node,
     run_demo,
     run_patient_turn,
     run_report,
     run_turn,
+    stream_patient,
+    stream_therapist,
+    therapist_node,
 )
 
 VLLM_URL = os.environ.get("VLLM_URL", "http://localhost:8000/v1")
@@ -58,13 +70,31 @@ def _validate_questionnaires(names: list[str]) -> list[str]:
     return names
 
 
+class AdvancedParams(BaseModel):
+    """Generation knobs; None = use the app default (agent.graph.DEFAULT_PARAMS)."""
+    therapist_temperature: float | None = Field(default=None, ge=0, le=2)
+    therapist_max_tokens: int | None = Field(default=None, ge=16, le=1024)
+    patient_temperature: float | None = Field(default=None, ge=0, le=2)
+    judge_model: str | None = Field(default=None, description=f"one of {JUDGE_MODEL_CHOICES}")
+    seed: int | None = Field(default=None, description="seeds vLLM + OpenAI calls (best-effort)")
+
+    def as_dict(self) -> dict:
+        if self.judge_model is not None and self.judge_model not in JUDGE_MODEL_CHOICES:
+            raise HTTPException(status_code=422, detail=f"judge_model must be one of {JUDGE_MODEL_CHOICES}")
+        return {k: v for k, v in self.model_dump().items() if v is not None}
+
+
 class CreateSession(BaseModel):
     model: str = Field(default=DEFAULT_MODEL, description="Served therapist model name (ignored when you play the therapist)")
     role: str = Field(default="patient", description="Which role YOU play: 'patient' (model is the therapist) or 'therapist' (simulated patient responds; the judges score YOU)")
     turn_questionnaires: list[str] = Field(
-        default=DEFAULT_TURN_QUESTIONNAIRES, description=f"Judged every turn; any of {list(QUESTIONNAIRES)}")
+        default=DEFAULT_TURN_QUESTIONNAIRES,
+        description=f"Judged every turn; any of {list(QUESTIONNAIRES)}; [] disables per-turn judging")
     report_questionnaires: list[str] = Field(
         default=DEFAULT_REPORT_QUESTIONNAIRES, description="Judged at session end")
+    params: AdvancedParams = AdvancedParams()
+    turn_rationale: bool = Field(default=False, description="judge adds a one-sentence rationale per turn")
+    report_rationale: bool = Field(default=False, description="...and per report instrument")
     # Simulated-patient persona (used when role='therapist').
     gender: str = "Female"
     age: int = 61
@@ -83,6 +113,9 @@ class DemoRequest(BaseModel):
     max_patient_turns: int = Field(default=4, ge=1, le=8)
     turn_questionnaires: list[str] = Field(default=DEFAULT_TURN_QUESTIONNAIRES)
     report_questionnaires: list[str] = Field(default=DEFAULT_REPORT_QUESTIONNAIRES)
+    params: AdvancedParams = AdvancedParams()
+    turn_rationale: bool = False
+    report_rationale: bool = False
     # Simulated-patient persona (thesis permutation dimensions).
     gender: str = Field(default="Female", description=f"one of {PERSONA_OPTIONS['gender']}")
     age: int = Field(default=61)
@@ -93,9 +126,13 @@ class DemoRequest(BaseModel):
 
 
 def _new_session(model: str, turn_qs: list[str] | None = None, report_qs: list[str] | None = None,
-                 role: str = "patient", patient_persona: str | None = None) -> dict:
+                 role: str = "patient", patient_persona: str | None = None,
+                 params: dict | None = None, turn_rationale: bool = False,
+                 report_rationale: bool = False, kind: str = "practice") -> dict:
     session = {
         "id": uuid.uuid4().hex[:12],
+        "created_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "kind": kind,  # practice | compare | demo
         "model": model,
         "role": role,  # which role the HUMAN plays
         # Patient mode: model opens with the standard greeting. Therapist mode:
@@ -103,35 +140,63 @@ def _new_session(model: str, turn_qs: list[str] | None = None, report_qs: list[s
         "messages": initial_messages() if role == "patient" else [],
         "patient_persona": patient_persona or build_patient_persona(),
         "turn_scores": [],
-        "turn_questionnaires": turn_qs or DEFAULT_TURN_QUESTIONNAIRES,
-        "report_questionnaires": report_qs or DEFAULT_REPORT_QUESTIONNAIRES,
+        "turn_questionnaires": DEFAULT_TURN_QUESTIONNAIRES if turn_qs is None else turn_qs,
+        "report_questionnaires": DEFAULT_REPORT_QUESTIONNAIRES if report_qs is None else report_qs,
+        "params": params or {},
+        "turn_rationale": turn_rationale,
+        "report_rationale": report_rationale,
+        "usage": empty_usage(),
     }
     SESSIONS[session["id"]] = session
     return session
 
 
+def _store_demo_session(model: str, state: dict, persona: str, kind: str = "demo") -> dict:
+    """Record a finished auto-demo run so it shows up in history/export."""
+    session = _new_session(model, state.get("turn_questionnaires"), state.get("report_questionnaires"),
+                           role="patient", patient_persona=persona,
+                           params=state.get("params") or {},
+                           turn_rationale=bool(state.get("turn_rationale")),
+                           report_rationale=bool(state.get("report_rationale")), kind=kind)
+    session["messages"] = state["messages"]
+    session["turn_scores"] = state["turn_scores"]
+    session["report"] = state["report"]
+    session["usage"] = state.get("openai_usage") or empty_usage()
+    return session
+
+
 def _advance(session: dict, user_message: str) -> dict:
     """Append the human's turn, run the counterpart (+judge when enabled)."""
+    params = session.get("params") or {}
+    turn_qs = session.get("turn_questionnaires") or []
+    usage = session.setdefault("usage", empty_usage())
+    judge = SCORING_ENABLED and bool(turn_qs)
     if session["role"] == "therapist":
         # Human is the therapist; the simulated patient replies, judges score the human.
-        session["messages"].append({"role": "assistant", "content": user_message})
         if not SCORING_ENABLED:
             raise HTTPException(status_code=503, detail="therapist mode needs OPENAI_API_KEY (simulated patient)")
-        state = run_patient_turn(session["messages"], session["patient_persona"],
-                                 session["turn_scores"], session["turn_questionnaires"])
+        session["messages"].append({"role": "assistant", "content": user_message})
+        if judge:
+            state = run_patient_turn(session["messages"], session["patient_persona"],
+                                     session["turn_scores"], turn_qs, params,
+                                     session.get("turn_rationale", False), usage)
+        else:
+            state = patient_node({"messages": session["messages"], "params": params,
+                                  "patient_system_prompt": session["patient_persona"],
+                                  "openai_usage": usage})
     else:
         # Human is the patient; the local model therapist replies.
         session["messages"].append({"role": "user", "content": user_message})
-        if not SCORING_ENABLED:
-            from agent.graph import therapist_node
-            session["messages"] = therapist_node(
-                {"messages": session["messages"], "model": session["model"]})["messages"]
-            return {}
-        state = run_turn(session["messages"], session["model"], session["turn_scores"],
-                         session["turn_questionnaires"])
+        if judge:
+            state = run_turn(session["messages"], session["model"], session["turn_scores"],
+                             turn_qs, params, session.get("turn_rationale", False), usage)
+        else:
+            state = therapist_node({"messages": session["messages"], "model": session["model"],
+                                    "params": params})
     session["messages"] = state["messages"]
-    session["turn_scores"] = state["turn_scores"]
-    return session["turn_scores"][-1] if session["turn_scores"] else {}
+    session["turn_scores"] = state.get("turn_scores", session["turn_scores"])
+    session["usage"] = state.get("openai_usage", usage)
+    return session["turn_scores"][-1] if judge and session["turn_scores"] else {}
 
 
 async def _list_models() -> list[str]:
@@ -141,12 +206,26 @@ async def _list_models() -> list[str]:
     return [m["id"] for m in resp.json()["data"]]
 
 
+def _session_summary(session: dict) -> dict:
+    return {
+        "id": session["id"],
+        "created_at": session["created_at"],
+        "kind": session["kind"],
+        "role": session["role"],
+        "model": session["model"],
+        "therapist_turns": sum(1 for m in session["messages"] if m["role"] == "assistant"),
+        "scored_turns": len(session["turn_scores"]),
+        "has_report": "report" in session,
+        "cost_usd": (session.get("usage") or {}).get("cost_usd", 0.0),
+    }
+
+
 # -------------------------------------------------------------------------- api
 
 app = FastAPI(
     title="MI Coach",
     description=f"Practice API for Motivational Interviewing skills. {DISCLAIMER}",
-    version="0.3.0",
+    version="1.0.0",
 )
 
 
@@ -174,11 +253,20 @@ async def create_session(body: CreateSession) -> dict:
         _validate_questionnaires(body.report_questionnaires),
         role=body.role,
         patient_persona=persona,
+        params=body.params.as_dict(),
+        turn_rationale=body.turn_rationale,
+        report_rationale=body.report_rationale,
     )
     return {"session_id": session["id"], "model": session["model"], "role": session["role"],
             "greeting": GREETING if body.role == "patient" else None,
             "turn_questionnaires": session["turn_questionnaires"],
-            "report_questionnaires": session["report_questionnaires"]}
+            "report_questionnaires": session["report_questionnaires"],
+            "params": {**DEFAULT_PARAMS, **session["params"]}}
+
+
+@app.get("/sessions")
+def list_sessions() -> list[dict]:
+    return [_session_summary(s) for s in SESSIONS.values()]
 
 
 @app.post("/sessions/{session_id}/message")
@@ -192,6 +280,7 @@ def send_message(session_id: str, body: PatientMessage) -> dict:
         "reply_role": "patient" if session["role"] == "therapist" else "therapist",
         "turns": len(session["messages"]),
         "turn_score": turn_score,
+        "usage": session["usage"],
     }
 
 
@@ -204,7 +293,10 @@ def session_report(session_id: str) -> dict:
         raise HTTPException(status_code=503, detail="no OPENAI_API_KEY — judge disabled")
     if "report" not in session:
         session["report"] = run_report(session["messages"], session["turn_scores"],
-                                       session["report_questionnaires"])
+                                       session["report_questionnaires"], session.get("params"),
+                                       session.get("report_rationale", False),
+                                       dict(session.get("usage") or empty_usage()))
+        session["usage"] = session["report"]["usage"]
     return session["report"]
 
 
@@ -213,7 +305,8 @@ def get_session(session_id: str) -> dict:
     session = SESSIONS.get(session_id)
     if session is None:
         raise HTTPException(status_code=404, detail="unknown session")
-    return {k: session[k] for k in ("id", "model", "messages", "turn_scores") if k in session}
+    return {k: session[k] for k in ("id", "created_at", "kind", "role", "model", "messages",
+                                    "turn_scores", "usage", "report") if k in session}
 
 
 @app.delete("/sessions/{session_id}", status_code=204)
@@ -237,20 +330,34 @@ def demo(body: DemoRequest) -> dict:
         patient_system_prompt=persona,
         turn_questionnaires=_validate_questionnaires(body.turn_questionnaires),
         report_questionnaires=_validate_questionnaires(body.report_questionnaires),
+        params=body.params.as_dict(),
+        turn_rationale=body.turn_rationale,
+        report_rationale=body.report_rationale,
     )
+    session = _store_demo_session(body.model, state, persona)
     return {
+        "session_id": session["id"],
         "model": body.model,
         "messages": state["messages"][1:],  # drop system prompt
         "turn_scores": state["turn_scores"],
         "report": state["report"],
         "patient_persona": persona,
+        "usage": session["usage"],
     }
+
+
+def _usage_line(usage: dict | None) -> str:
+    if not usage or not usage.get("calls"):
+        return ""
+    return (f"*OpenAI usage: {usage['calls']} calls · {usage['prompt_tokens']:,} in / "
+            f"{usage['completion_tokens']:,} out tokens · ~${usage['cost_usd']:.4f}*")
 
 
 def _session_markdown(session: dict) -> str:
     """Export a session (transcript + scores + report) as markdown."""
     lines = [f"# MI Coach session `{session['id']}`",
-             f"*Therapist model: `{session['model']}`* — {DISCLAIMER}", "", "## Transcript"]
+             f"*{session.get('created_at', '')} — {session.get('kind', 'practice')} — "
+             f"therapist model: `{session['model']}`* — {DISCLAIMER}", "", "## Transcript"]
     for m in session["messages"]:
         if m["role"] == "user":
             lines.append(f"\n**Patient:** {m['content']}")
@@ -261,6 +368,9 @@ def _session_markdown(session: dict) -> str:
         for t in session["turn_scores"]:
             means = ", ".join(f"{k}: {v}" for k, v in t["means"].items())
             lines.append(f"- Therapist turn {t['therapist_turns'] - 1}: {means}")
+            for name, r in t.get("results", {}).items():
+                if r.get("rationale"):
+                    lines.append(f"  - {name}: *{r['rationale']}*")
     report = session.get("report")
     if report:
         lines += ["", "## Session report"]
@@ -270,11 +380,16 @@ def _session_markdown(session: dict) -> str:
             if "globals" in r:
                 lines.append(f"- globals: {r['globals']}")
                 lines.append(f"- behavior counts: {r['behaviors']}")
+            if r.get("rationale"):
+                lines.append(f"- judge rationale: *{r['rationale']}*")
         a = report["assessment"]
         lines += ["", f"## Overall assessment — {a['overall_rating']}/5", a["summary"],
                   "", "**Strengths:**", *[f"- {s}" for s in a["strengths"]],
                   "", "**Growth areas:**", *[f"- {g}" for g in a["growth_areas"]],
                   "", f"**Tip:** {a['tip']}"]
+    usage = _usage_line(session.get("usage"))
+    if usage:
+        lines += ["", usage]
     return "\n".join(lines) + "\n"
 
 
@@ -302,7 +417,8 @@ def _scores_df(turn_scores: list[dict]) -> pd.DataFrame:
     return pd.DataFrame(rows) if rows else _EMPTY_SCORES
 
 
-def _scores_markdown(turn_scores: list[dict], report: dict | None = None) -> str:
+def _scores_markdown(turn_scores: list[dict], report: dict | None = None,
+                     usage: dict | None = None) -> str:
     if not SCORING_ENABLED:
         return "*Live scoring off (no `OPENAI_API_KEY`).*"
     lines = ["### Live scores (mean, 1-5)"]
@@ -310,6 +426,9 @@ def _scores_markdown(turn_scores: list[dict], report: dict | None = None) -> str
         for t in turn_scores:
             means = " · ".join(f"{name} **{mean}**" for name, mean in t["means"].items())
             lines.append(f"- Turn {t['therapist_turns'] - 1}: {means}")
+            for name, r in t.get("results", {}).items():
+                if r.get("rationale"):
+                    lines.append(f"  - {name}: *{r['rationale']}*")
     else:
         lines.append("*No scored turns yet.*")
     if report:
@@ -319,6 +438,8 @@ def _scores_markdown(turn_scores: list[dict], report: dict | None = None) -> str
             if "globals" in r:
                 lines.append(f"  - globals: {r['globals']}")
                 lines.append(f"  - behavior counts: {r['behaviors']}")
+            if r.get("rationale"):
+                lines.append(f"  - *{r['rationale']}*")
         a = report["assessment"]
         stars = "★" * a["overall_rating"] + "☆" * (5 - a["overall_rating"])
         lines += [
@@ -328,7 +449,17 @@ def _scores_markdown(turn_scores: list[dict], report: dict | None = None) -> str
             "\n**Growth areas:**", *[f"- {g}" for g in a["growth_areas"]],
             f"\n**Tip:** {a['tip']}",
         ]
+    usage_line = _usage_line(usage)
+    if usage_line:
+        lines += ["", usage_line]
     return "\n".join(lines)
+
+
+def _export_file(name: str, content: str) -> str:
+    path = os.path.join(tempfile.mkdtemp(prefix="mi-coach-"), name)
+    with open(path, "w") as f:
+        f.write(content)
+    return path
 
 
 def _build_ui() -> gr.Blocks:
@@ -366,10 +497,11 @@ def _build_ui() -> gr.Blocks:
         method_choices = [(m.upper(), m) for m in methods] + [("Base model (no adapter)", "base")]
         default_method = "pto" if "pto" in methods else methods[0]
 
-        def _adapter_pickers(suffix: str = ""):
-            method_dd = gr.Dropdown(method_choices, value=default_method,
+        def _adapter_pickers(suffix: str = "", method: str | None = None):
+            method = method if method in adapters else default_method
+            method_dd = gr.Dropdown(method_choices, value=method,
                                     label=f"Therapist adapter{suffix}")
-            iter_dd = gr.Dropdown(_iter_choices(default_method), value=BEST_ITER.get(default_method, 10),
+            iter_dd = gr.Dropdown(_iter_choices(method), value=BEST_ITER.get(method, 10),
                                   label="Iteration (★ = thesis best)")
             method_dd.change(
                 lambda m: gr.update(choices=_iter_choices(m),
@@ -378,21 +510,105 @@ def _build_ui() -> gr.Blocks:
                 [method_dd], [iter_dd])
             return method_dd, iter_dd
 
-        def _do_turn(user_msg, history, session_id, model, turn_q, report_q,
-                     role="patient", persona=None):
-            """Shared advance logic for practice + compare tabs."""
-            existing = SESSIONS.get(session_id, {})
-            if session_id is None or existing.get("model") != model or existing.get("role") != role:
-                session_id = _new_session(model, turn_q or None, report_q or None,
-                                          role=role, patient_persona=persona)["id"]
-                history = list(initial_chat) if role == "patient" else []
-            session = SESSIONS[session_id]
-            session["turn_questionnaires"] = turn_q or DEFAULT_TURN_QUESTIONNAIRES
-            session["report_questionnaires"] = report_q or DEFAULT_REPORT_QUESTIONNAIRES
-            _advance(session, user_msg)
+        def _persona_pickers():
+            with gr.Row():
+                p_gender = gr.Dropdown(PERSONA_OPTIONS["gender"], value="Female", label="Gender")
+                p_age = gr.Dropdown(PERSONA_OPTIONS["age"], value=61, label="Age")
+                p_problem = gr.Dropdown(PERSONA_OPTIONS["problem"], value="Smoking", label="Problem")
+            with gr.Row():
+                p_time = gr.Dropdown(PERSONA_OPTIONS["problem_time"], value="ManyYears", label="Problem duration")
+                p_tried = gr.Dropdown(PERSONA_OPTIONS["tried_to_solve"], value="ManyTimes", label="Tried before")
+                p_coop = gr.Dropdown(PERSONA_OPTIONS["cooperation"], value="StartLowAndChangesToHigh", label="Cooperation")
+            return [p_gender, p_age, p_problem, p_time, p_tried, p_coop]
+
+        # -------------------------------------------------- advanced settings
+        with gr.Accordion("Advanced settings (apply to all tabs)", open=False):
+            with gr.Row():
+                adv_t_temp = gr.Slider(0.0, 1.5, value=DEFAULT_PARAMS["therapist_temperature"],
+                                       step=0.05, label="Therapist temperature")
+                adv_t_max = gr.Slider(64, 512, value=DEFAULT_PARAMS["therapist_max_tokens"],
+                                      step=16, label="Therapist max tokens")
+                adv_p_temp = gr.Slider(0.0, 1.5, value=DEFAULT_PARAMS["patient_temperature"],
+                                       step=0.05, label="Simulated-patient temperature")
+            with gr.Row():
+                adv_judge = gr.Dropdown(JUDGE_MODEL_CHOICES, value=DEFAULT_PARAMS["judge_model"],
+                                        label="Judge model (report + per-turn)")
+                adv_seed = gr.Textbox(value="", label="Seed (blank = unseeded)",
+                                      placeholder="e.g. 42")
+                adv_demo_turns = gr.Slider(1, 8, value=3, step=1,
+                                           label="Auto-demo length (patient turns)")
+            with gr.Row():
+                adv_turn_rat = gr.Checkbox(False, label="Judge rationale per turn (one sentence per instrument)")
+                adv_report_rat = gr.Checkbox(False, label="Judge rationale in the session report")
+
+        ADV = [adv_t_temp, adv_t_max, adv_p_temp, adv_judge, adv_seed]
+
+        def _ui_params(t_temp, t_max, p_temp, judge_model, seed) -> dict:
+            params = {"therapist_temperature": float(t_temp), "therapist_max_tokens": int(t_max),
+                      "patient_temperature": float(p_temp), "judge_model": judge_model}
+            seed = str(seed).strip()
+            if seed:
+                try:
+                    params["seed"] = int(seed)
+                except ValueError:
+                    pass
+            return params
+
+        def _get_or_create(session_id, model, role, turn_q, report_q, persona,
+                           params, turn_rat, report_rat, kind):
+            """Reuse the session unless the model/role changed; sync settings."""
+            session = SESSIONS.get(session_id)
+            if session is None or session.get("model") != model or session.get("role") != role:
+                session = _new_session(model, list(turn_q), list(report_q), role=role,
+                                       patient_persona=persona, params=params,
+                                       turn_rationale=turn_rat, report_rationale=report_rat,
+                                       kind=kind)
+            else:
+                session.update(turn_questionnaires=list(turn_q), report_questionnaires=list(report_q),
+                               params=params, turn_rationale=turn_rat, report_rationale=report_rat)
+            return session
+
+        def _stream_reply(session, user_msg, history):
+            """Append the human turn + stream the counterpart's reply.
+            Yields updated history; the session transcript is finalized at the end."""
+            role = session["role"]
+            session["messages"].append(
+                {"role": "assistant" if role == "therapist" else "user", "content": user_msg})
             history = history + [{"role": "user", "content": user_msg},
-                                 {"role": "assistant", "content": session["messages"][-1]["content"]}]
-            return history, session_id, session
+                                 {"role": "assistant", "content": ""}]
+            yield history
+            if role == "therapist":
+                gen = stream_patient(session["messages"], session["patient_persona"],
+                                     session["params"], session["usage"])
+            else:
+                gen = stream_therapist(session["messages"], session["model"], session["params"])
+            reply = ""
+            for reply in gen:
+                history[-1]["content"] = reply
+                yield history
+            session["messages"].append(
+                {"role": "user" if role == "therapist" else "assistant", "content": reply})
+
+        def _judge_last_turn(session):
+            if not SCORING_ENABLED or not session["turn_questionnaires"]:
+                return
+            out = judge_turn(session["messages"], session["turn_scores"],
+                             session["turn_questionnaires"], session["params"],
+                             session["turn_rationale"], session["usage"])
+            session["turn_scores"] = out["turn_scores"]
+            session["usage"] = out["openai_usage"]
+
+        def _end_session(session):
+            """Run (or fetch) the end-of-session report."""
+            if session is None or not SCORING_ENABLED or not session["messages"]:
+                return None
+            if "report" not in session:
+                session["report"] = run_report(session["messages"], session["turn_scores"],
+                                               session["report_questionnaires"], session["params"],
+                                               session.get("report_rationale", False),
+                                               dict(session["usage"]))
+                session["usage"] = session["report"]["usage"]
+            return session["report"]
 
         # ------------------------------------------------------------ practice
         with gr.Tab("Practice"):
@@ -412,20 +628,13 @@ def _build_ui() -> gr.Blocks:
                         end = gr.Button("End session → report")
                         demo_btn = gr.Button("Auto-demo (simulated patient)")
                         reset = gr.Button("New session")
-                    with gr.Accordion("Auto-demo patient persona (thesis permutations)", open=False):
-                        with gr.Row():
-                            p_gender = gr.Dropdown(PERSONA_OPTIONS["gender"], value="Female", label="Gender")
-                            p_age = gr.Dropdown(PERSONA_OPTIONS["age"], value=61, label="Age")
-                            p_problem = gr.Dropdown(PERSONA_OPTIONS["problem"], value="Smoking", label="Problem")
-                        with gr.Row():
-                            p_time = gr.Dropdown(PERSONA_OPTIONS["problem_time"], value="ManyYears", label="Problem duration")
-                            p_tried = gr.Dropdown(PERSONA_OPTIONS["tried_to_solve"], value="ManyTimes", label="Tried before")
-                            p_coop = gr.Dropdown(PERSONA_OPTIONS["cooperation"], value="StartLowAndChangesToHigh", label="Cooperation")
+                    with gr.Accordion("Simulated-patient persona (thesis permutations)", open=False):
+                        personas = _persona_pickers()
                     export_btn = gr.Button("Export session (.md)", size="sm")
                     export_file = gr.File(label="Session export", visible=False)
                 with gr.Column(scale=1):
                     turn_qs = gr.CheckboxGroup(q_choices, value=DEFAULT_TURN_QUESTIONNAIRES,
-                                               label="Live judge (every turn — 1 gpt-4o-mini call each)")
+                                               label="Live judge (every turn — 1 gpt-4o-mini call each; none = off)")
                     report_qs = gr.CheckboxGroup(q_choices, value=DEFAULT_REPORT_QUESTIONNAIRES,
                                                  label="Report judge (at session end)")
                     score_plot = gr.LinePlot(_EMPTY_SCORES, x="turn", y="mean", color="instrument",
@@ -434,15 +643,27 @@ def _build_ui() -> gr.Blocks:
             state = gr.State(None)  # session id
 
             def on_send(user_msg, history, session_id, method, iteration, turn_q, report_q,
-                        role, gender, age, problem, ptime, tried, coop):
-                if not user_msg.strip():
-                    return "", history, session_id, gr.update(), gr.update()
+                        role, gender, age, problem, ptime, tried, coop,
+                        t_temp, t_max, p_temp, judge_model, seed, turn_rat, report_rat):
+                user_msg = user_msg.strip()
+                if not user_msg:
+                    yield "", history, session_id, gr.update(), gr.update()
+                    return
+                if role == "therapist" and not SCORING_ENABLED:
+                    raise gr.Error("Therapist mode needs OPENAI_API_KEY (simulated patient).")
+                params = _ui_params(t_temp, t_max, p_temp, judge_model, seed)
                 persona = build_patient_persona(gender, age, problem, ptime, tried, coop)
                 model = "human" if role == "therapist" else _model_name(method, iteration)
-                history, session_id, session = _do_turn(
-                    user_msg, history, session_id, model, turn_q, report_q, role, persona)
-                return ("", history, session_id,
-                        _scores_df(session["turn_scores"]), _scores_markdown(session["turn_scores"]))
+                session = _get_or_create(session_id, model, role, turn_q, report_q, persona,
+                                         params, turn_rat, report_rat, kind="practice")
+                if session["id"] != session_id:
+                    history = list(initial_chat) if role == "patient" else []
+                session_id = session["id"]
+                for history in _stream_reply(session, user_msg, history):
+                    yield "", history, session_id, gr.update(), gr.update()
+                _judge_last_turn(session)
+                yield ("", history, session_id, _scores_df(session["turn_scores"]),
+                       _scores_markdown(session["turn_scores"], usage=session["usage"]))
 
             def on_role(role):
                 """Switch chat framing when the human changes role."""
@@ -456,85 +677,231 @@ def _build_ui() -> gr.Blocks:
 
             def on_end(session_id):
                 session = SESSIONS.get(session_id)
-                if session is None or not SCORING_ENABLED or not session["turn_scores"]:
+                report = _end_session(session)
+                if report is None:
                     return gr.update()
-                if "report" not in session:
-                    session["report"] = run_report(session["messages"], session["turn_scores"],
-                                                   session["report_questionnaires"])
-                return _scores_markdown(session["turn_scores"], session["report"])
+                return _scores_markdown(session["turn_scores"], report, session["usage"])
 
-            def on_demo(method, iteration, turn_q, report_q, gender, age, problem, ptime, tried, coop):
+            def on_demo(method, iteration, turn_q, report_q, gender, age, problem, ptime, tried, coop,
+                        t_temp, t_max, p_temp, judge_model, seed, turn_rat, report_rat, demo_turns):
+                params = _ui_params(t_temp, t_max, p_temp, judge_model, seed)
                 persona = build_patient_persona(gender, age, problem, ptime, tried, coop)
-                state_out = run_demo(_model_name(method, iteration), max_patient_turns=3,
+                state_out = run_demo(_model_name(method, iteration), max_patient_turns=int(demo_turns),
                                      patient_system_prompt=persona,
-                                     turn_questionnaires=turn_q or None, report_questionnaires=report_q or None)
+                                     turn_questionnaires=turn_q or None, report_questionnaires=report_q or None,
+                                     params=params, turn_rationale=turn_rat, report_rationale=report_rat)
+                session = _store_demo_session(_model_name(method, iteration), state_out, persona)
                 history = [{"role": m["role"], "content": m["content"]} for m in state_out["messages"][1:]]
-                return (history, None, _scores_df(state_out["turn_scores"]),
-                        _scores_markdown(state_out["turn_scores"], state_out["report"]))
+                return (history, session["id"], _scores_df(state_out["turn_scores"]),
+                        _scores_markdown(state_out["turn_scores"], state_out["report"], session["usage"]))
 
             def on_export(session_id):
                 session = SESSIONS.get(session_id)
                 if session is None:
                     return gr.update(visible=False)
-                path = os.path.join(tempfile.mkdtemp(prefix="mi-coach-"), f"session-{session['id']}.md")
-                with open(path, "w") as f:
-                    f.write(_session_markdown(session))
+                path = _export_file(f"session-{session['id']}.md", _session_markdown(session))
                 return gr.update(value=path, visible=True)
 
             def on_reset():
                 return list(initial_chat), None, _EMPTY_SCORES, _scores_markdown([]), gr.update(visible=False)
 
             send_inputs = [msg, chat, state, method_dd, iter_dd, turn_qs, report_qs,
-                           role_radio, p_gender, p_age, p_problem, p_time, p_tried, p_coop]
+                           role_radio, *personas, *ADV, adv_turn_rat, adv_report_rat]
             send.click(on_send, send_inputs, [msg, chat, state, score_plot, scores_md])
             msg.submit(on_send, send_inputs, [msg, chat, state, score_plot, scores_md])
             role_radio.change(on_role, [role_radio], [chat, state, method_dd, iter_dd, msg])
             end.click(on_end, [state], [scores_md])
-            demo_btn.click(on_demo, [method_dd, iter_dd, turn_qs, report_qs,
-                                     p_gender, p_age, p_problem, p_time, p_tried, p_coop],
+            demo_btn.click(on_demo, [method_dd, iter_dd, turn_qs, report_qs, *personas,
+                                     *ADV, adv_turn_rat, adv_report_rat, adv_demo_turns],
                            [chat, state, score_plot, scores_md])
             export_btn.click(on_export, [state], [export_file])
             reset.click(on_reset, None, [chat, state, score_plot, scores_md, export_file])
 
         # ------------------------------------------------------------- compare
         with gr.Tab("Compare (A/B)"):
-            gr.Markdown("Send the **same patient message** to two checkpoints and compare "
-                        "replies and judge scores side by side.")
+            gr.Markdown("Drive **two checkpoints side by side**: send the same patient message to "
+                        "both, or let the simulated patient run a full auto-demo against each. "
+                        "End the session to get a full report per side.")
             with gr.Row():
                 with gr.Column():
                     method_a, iter_a = _adapter_pickers(" — A")
                     chat_a = gr.Chatbot(value=list(initial_chat), label="A", height=360)
+                    plot_a = gr.LinePlot(_EMPTY_SCORES, x="turn", y="mean", color="instrument",
+                                         y_lim=[1, 5], label="A score timeline", height=180)
                     scores_a = gr.Markdown(_scores_markdown([]))
                 with gr.Column():
-                    method_b, iter_b = _adapter_pickers(" — B")
+                    method_b, iter_b = _adapter_pickers(" — B", method="grpo")
                     chat_b = gr.Chatbot(value=list(initial_chat), label="B", height=360)
+                    plot_b = gr.LinePlot(_EMPTY_SCORES, x="turn", y="mean", color="instrument",
+                                         y_lim=[1, 5], label="B score timeline", height=180)
                     scores_b = gr.Markdown(_scores_markdown([]))
-            cmp_qs = gr.CheckboxGroup(q_choices, value=DEFAULT_TURN_QUESTIONNAIRES,
-                                      label="Judge (every turn, per side)")
+            with gr.Row():
+                cmp_turn_qs = gr.CheckboxGroup(q_choices, value=DEFAULT_TURN_QUESTIONNAIRES,
+                                               label="Live judge (every turn, per side; none = off)")
+                cmp_report_qs = gr.CheckboxGroup(q_choices, value=DEFAULT_REPORT_QUESTIONNAIRES,
+                                                 label="Report judge (at session end, per side)")
+            with gr.Accordion("Simulated-patient persona (auto-demo)", open=False):
+                cmp_personas = _persona_pickers()
             cmp_msg = gr.Textbox(label="Your message (as the patient — sent to both)")
             with gr.Row():
                 cmp_send = gr.Button("Send to both", variant="primary")
+                cmp_demo = gr.Button("Auto-demo both (simulated patient)")
+                cmp_end = gr.Button("End sessions → reports")
+                cmp_export = gr.Button("Export comparison (.md)")
                 cmp_reset = gr.Button("New comparison")
+            cmp_file = gr.File(label="Comparison export", visible=False)
             sid_a, sid_b = gr.State(None), gr.State(None)
 
-            def on_cmp_send(user_msg, hist_a, hist_b, a_id, b_id, m_a, i_a, m_b, i_b, qs):
-                if not user_msg.strip():
-                    return "", hist_a, hist_b, a_id, b_id, gr.update(), gr.update()
-                hist_a, a_id, sess_a = _do_turn(user_msg, hist_a, a_id, _model_name(m_a, i_a), qs, None)
-                hist_b, b_id, sess_b = _do_turn(user_msg, hist_b, b_id, _model_name(m_b, i_b), qs, None)
-                return ("", hist_a, hist_b, a_id, b_id,
-                        _scores_markdown(sess_a["turn_scores"]), _scores_markdown(sess_b["turn_scores"]))
+            def _cmp_outputs(sess_a, sess_b, with_reports=False):
+                rep_a = sess_a.get("report") if with_reports else None
+                rep_b = sess_b.get("report") if with_reports else None
+                return (_scores_df(sess_a["turn_scores"]), _scores_df(sess_b["turn_scores"]),
+                        _scores_markdown(sess_a["turn_scores"], rep_a, sess_a["usage"]),
+                        _scores_markdown(sess_b["turn_scores"], rep_b, sess_b["usage"]))
+
+            def on_cmp_send(user_msg, hist_a, hist_b, a_id, b_id, m_a, i_a, m_b, i_b,
+                            turn_q, report_q, t_temp, t_max, p_temp, judge_model, seed,
+                            turn_rat, report_rat):
+                user_msg = user_msg.strip()
+                if not user_msg:
+                    yield ("", hist_a, hist_b, a_id, b_id,
+                           gr.update(), gr.update(), gr.update(), gr.update())
+                    return
+                params = _ui_params(t_temp, t_max, p_temp, judge_model, seed)
+                sess_a = _get_or_create(a_id, _model_name(m_a, i_a), "patient", turn_q, report_q,
+                                        None, params, turn_rat, report_rat, kind="compare")
+                sess_b = _get_or_create(b_id, _model_name(m_b, i_b), "patient", turn_q, report_q,
+                                        None, params, turn_rat, report_rat, kind="compare")
+                if sess_a["id"] != a_id:
+                    hist_a = list(initial_chat)
+                if sess_b["id"] != b_id:
+                    hist_b = list(initial_chat)
+                a_id, b_id = sess_a["id"], sess_b["id"]
+                # Stream both replies concurrently (interleaved chunks).
+                gen_a = _stream_reply(sess_a, user_msg, hist_a)
+                gen_b = _stream_reply(sess_b, user_msg, hist_b)
+                for step_a, step_b in zip_longest(gen_a, gen_b):
+                    hist_a = step_a if step_a is not None else hist_a
+                    hist_b = step_b if step_b is not None else hist_b
+                    yield ("", hist_a, hist_b, a_id, b_id,
+                           gr.update(), gr.update(), gr.update(), gr.update())
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    fa = pool.submit(_judge_last_turn, sess_a)
+                    fb = pool.submit(_judge_last_turn, sess_b)
+                    fa.result(), fb.result()
+                yield ("", hist_a, hist_b, a_id, b_id, *_cmp_outputs(sess_a, sess_b))
+
+            def on_cmp_demo(m_a, i_a, m_b, i_b, turn_q, report_q,
+                            gender, age, problem, ptime, tried, coop,
+                            t_temp, t_max, p_temp, judge_model, seed,
+                            turn_rat, report_rat, demo_turns):
+                params = _ui_params(t_temp, t_max, p_temp, judge_model, seed)
+                persona = build_patient_persona(gender, age, problem, ptime, tried, coop)
+
+                def run_side(method, iteration):
+                    model = _model_name(method, iteration)
+                    state_out = run_demo(model, max_patient_turns=int(demo_turns),
+                                         patient_system_prompt=persona,
+                                         turn_questionnaires=turn_q or None,
+                                         report_questionnaires=report_q or None,
+                                         params=params, turn_rationale=turn_rat,
+                                         report_rationale=report_rat)
+                    return _store_demo_session(model, state_out, persona, kind="compare")
+
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    fa = pool.submit(run_side, m_a, i_a)
+                    fb = pool.submit(run_side, m_b, i_b)
+                    sess_a, sess_b = fa.result(), fb.result()
+                hist_a = [{"role": m["role"], "content": m["content"]} for m in sess_a["messages"][1:]]
+                hist_b = [{"role": m["role"], "content": m["content"]} for m in sess_b["messages"][1:]]
+                return (hist_a, hist_b, sess_a["id"], sess_b["id"],
+                        *_cmp_outputs(sess_a, sess_b, with_reports=True))
+
+            def on_cmp_end(a_id, b_id):
+                sess_a, sess_b = SESSIONS.get(a_id), SESSIONS.get(b_id)
+                if sess_a is None or sess_b is None:
+                    return gr.update(), gr.update(), gr.update(), gr.update()
+                with ThreadPoolExecutor(max_workers=2) as pool:
+                    fa = pool.submit(_end_session, sess_a)
+                    fb = pool.submit(_end_session, sess_b)
+                    fa.result(), fb.result()
+                return _cmp_outputs(sess_a, sess_b, with_reports=True)
+
+            def on_cmp_export(a_id, b_id):
+                sess_a, sess_b = SESSIONS.get(a_id), SESSIONS.get(b_id)
+                if sess_a is None or sess_b is None:
+                    return gr.update(visible=False)
+                content = (f"# MI Coach A/B comparison — `{sess_a['model']}` vs `{sess_b['model']}`\n\n"
+                           f"# Side A\n\n{_session_markdown(sess_a)}\n\n"
+                           f"# Side B\n\n{_session_markdown(sess_b)}")
+                path = _export_file(f"compare-{sess_a['id']}-vs-{sess_b['id']}.md", content)
+                return gr.update(value=path, visible=True)
 
             def on_cmp_reset():
-                return list(initial_chat), list(initial_chat), None, None, _scores_markdown([]), _scores_markdown([])
+                return (list(initial_chat), list(initial_chat), None, None,
+                        _EMPTY_SCORES, _EMPTY_SCORES, _scores_markdown([]), _scores_markdown([]),
+                        gr.update(visible=False))
 
-            cmp_send.click(on_cmp_send,
-                           [cmp_msg, chat_a, chat_b, sid_a, sid_b, method_a, iter_a, method_b, iter_b, cmp_qs],
-                           [cmp_msg, chat_a, chat_b, sid_a, sid_b, scores_a, scores_b])
-            cmp_msg.submit(on_cmp_send,
-                           [cmp_msg, chat_a, chat_b, sid_a, sid_b, method_a, iter_a, method_b, iter_b, cmp_qs],
-                           [cmp_msg, chat_a, chat_b, sid_a, sid_b, scores_a, scores_b])
-            cmp_reset.click(on_cmp_reset, None, [chat_a, chat_b, sid_a, sid_b, scores_a, scores_b])
+            cmp_send_inputs = [cmp_msg, chat_a, chat_b, sid_a, sid_b,
+                               method_a, iter_a, method_b, iter_b, cmp_turn_qs, cmp_report_qs,
+                               *ADV, adv_turn_rat, adv_report_rat]
+            cmp_send_outputs = [cmp_msg, chat_a, chat_b, sid_a, sid_b,
+                                plot_a, plot_b, scores_a, scores_b]
+            cmp_send.click(on_cmp_send, cmp_send_inputs, cmp_send_outputs)
+            cmp_msg.submit(on_cmp_send, cmp_send_inputs, cmp_send_outputs)
+            cmp_demo.click(on_cmp_demo,
+                           [method_a, iter_a, method_b, iter_b, cmp_turn_qs, cmp_report_qs,
+                            *cmp_personas, *ADV, adv_turn_rat, adv_report_rat, adv_demo_turns],
+                           [chat_a, chat_b, sid_a, sid_b, plot_a, plot_b, scores_a, scores_b])
+            cmp_end.click(on_cmp_end, [sid_a, sid_b], [plot_a, plot_b, scores_a, scores_b])
+            cmp_export.click(on_cmp_export, [sid_a, sid_b], [cmp_file])
+            cmp_reset.click(on_cmp_reset, None,
+                            [chat_a, chat_b, sid_a, sid_b, plot_a, plot_b, scores_a, scores_b, cmp_file])
+
+        # ------------------------------------------------------------- history
+        with gr.Tab("History"):
+            gr.Markdown("Sessions from this server run (practice, compare, and auto-demo). "
+                        "Pick one to review the transcript, scores, and report, or export it.")
+            hist_refresh = gr.Button("Refresh", size="sm")
+            hist_table = gr.Dataframe(interactive=False, label="Sessions")
+            hist_dd = gr.Dropdown([], label="Open session")
+            hist_chat = gr.Chatbot(label="Transcript", height=360)
+            hist_scores = gr.Markdown()
+            hist_export = gr.Button("Export session (.md)", size="sm")
+            hist_file = gr.File(label="Session export", visible=False)
+
+            def _history_rows() -> pd.DataFrame:
+                rows = [_session_summary(s) for s in SESSIONS.values()]
+                rows.sort(key=lambda r: r["created_at"], reverse=True)
+                return pd.DataFrame(rows, columns=["id", "created_at", "kind", "role", "model",
+                                                   "therapist_turns", "scored_turns", "has_report",
+                                                   "cost_usd"])
+
+            def on_hist_refresh():
+                rows = _history_rows()
+                choices = [(f"{r.created_at} · {r.kind} · {r.model} · {r.id}", r.id)
+                           for r in rows.itertuples()]
+                return rows, gr.update(choices=choices, value=None)
+
+            def on_hist_pick(session_id):
+                session = SESSIONS.get(session_id)
+                if session is None:
+                    return [], ""
+                history = [{"role": m["role"], "content": m["content"]}
+                           for m in session["messages"] if m["role"] in ("user", "assistant")]
+                return history, _scores_markdown(session["turn_scores"], session.get("report"),
+                                                 session.get("usage"))
+
+            def on_hist_export(session_id):
+                session = SESSIONS.get(session_id)
+                if session is None:
+                    return gr.update(visible=False)
+                path = _export_file(f"session-{session['id']}.md", _session_markdown(session))
+                return gr.update(value=path, visible=True)
+
+            hist_refresh.click(on_hist_refresh, None, [hist_table, hist_dd])
+            hist_dd.change(on_hist_pick, [hist_dd], [hist_chat, hist_scores])
+            hist_export.click(on_hist_export, [hist_dd], [hist_file])
     return ui
 
 
