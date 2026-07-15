@@ -1,0 +1,633 @@
+{
+  "raw": [
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "noah-smoking-resistant",
+      "session": 1,
+      "q1_turn_means": [
+        3.6,
+        2.6,
+        2.8
+      ],
+      "q1_session_mean": 3.0,
+      "q2_mean": 4.29,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001838,
+      "wall_s": 22.5
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        3.6,
+        3.6,
+        3.8
+      ],
+      "q1_session_mean": 3.667,
+      "q2_mean": 4.29,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.001931,
+      "wall_s": 23.1
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "noah-smoking-resistant",
+      "session": 0,
+      "q1_turn_means": [
+        3.8,
+        2.8,
+        3.4
+      ],
+      "q1_session_mean": 3.333,
+      "q2_mean": 4.0,
+      "miti_global_mean": 4.0,
+      "n_messages": 7,
+      "cost_usd": 0.002024,
+      "wall_s": 23.4
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        4.2,
+        3.8,
+        3.6
+      ],
+      "q1_session_mean": 3.867,
+      "q2_mean": 4.35,
+      "miti_global_mean": 4.0,
+      "n_messages": 7,
+      "cost_usd": 0.002478,
+      "wall_s": 28.4
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "ava-obesity-eager",
+      "session": 1,
+      "q1_turn_means": [
+        3.8,
+        4.4,
+        4.4
+      ],
+      "q1_session_mean": 4.2,
+      "q2_mean": 4.71,
+      "miti_global_mean": 4.25,
+      "n_messages": 7,
+      "cost_usd": 0.001781,
+      "wall_s": 23.1
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "ava-obesity-eager",
+      "session": 0,
+      "q1_turn_means": [
+        3.8,
+        4.4,
+        4.4
+      ],
+      "q1_session_mean": 4.2,
+      "q2_mean": 4.71,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.001949,
+      "wall_s": 25.0
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "liam-obesity",
+      "session": 1,
+      "q1_turn_means": [
+        3.8,
+        3.4,
+        3.4
+      ],
+      "q1_session_mean": 3.533,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002158,
+      "wall_s": 25.5
+    },
+    {
+      "model": "mi-coach-pto-iter10",
+      "persona": "liam-obesity",
+      "session": 0,
+      "q1_turn_means": [
+        3.6,
+        2.8,
+        2.6
+      ],
+      "q1_session_mean": 3.0,
+      "q2_mean": 3.94,
+      "miti_global_mean": 4.0,
+      "n_messages": 7,
+      "cost_usd": 0.002494,
+      "wall_s": 35.0
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        3.8,
+        3.6,
+        4.0
+      ],
+      "q1_session_mean": 3.8,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002346,
+      "wall_s": 22.9
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        3.6,
+        3.6,
+        3.6
+      ],
+      "q1_session_mean": 3.6,
+      "q2_mean": 4.47,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.002349,
+      "wall_s": 26.2
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "noah-smoking-resistant",
+      "session": 0,
+      "q1_turn_means": [
+        3.8,
+        3.6,
+        3.4
+      ],
+      "q1_session_mean": 3.6,
+      "q2_mean": 4.29,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.002284,
+      "wall_s": 23.6
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "noah-smoking-resistant",
+      "session": 1,
+      "q1_turn_means": [
+        3.6,
+        2.6,
+        2.2
+      ],
+      "q1_session_mean": 2.8,
+      "q2_mean": 3.53,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.00254,
+      "wall_s": 23.6
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "ava-obesity-eager",
+      "session": 0,
+      "q1_turn_means": [
+        4.4,
+        4.6,
+        4.4
+      ],
+      "q1_session_mean": 4.467,
+      "q2_mean": 4.76,
+      "miti_global_mean": 5.0,
+      "n_messages": 7,
+      "cost_usd": 0.002308,
+      "wall_s": 26.3
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "ava-obesity-eager",
+      "session": 1,
+      "q1_turn_means": [
+        4.4,
+        4.6,
+        4.4
+      ],
+      "q1_session_mean": 4.467,
+      "q2_mean": 4.76,
+      "miti_global_mean": 5.0,
+      "n_messages": 7,
+      "cost_usd": 0.002478,
+      "wall_s": 26.2
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "liam-obesity",
+      "session": 0,
+      "q1_turn_means": [
+        3.8,
+        3.8,
+        3.8
+      ],
+      "q1_session_mean": 3.8,
+      "q2_mean": 4.29,
+      "miti_global_mean": 3.75,
+      "n_messages": 7,
+      "cost_usd": 0.002435,
+      "wall_s": 21.2
+    },
+    {
+      "model": "mi-coach-grpo-iter8",
+      "persona": "liam-obesity",
+      "session": 1,
+      "q1_turn_means": [
+        3.6,
+        3.8,
+        3.4
+      ],
+      "q1_session_mean": 3.6,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.5,
+      "n_messages": 7,
+      "cost_usd": 0.001998,
+      "wall_s": 19.5
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "emma-smoking",
+      "session": 1,
+      "q1_turn_means": [
+        2.6,
+        1.4,
+        1.4
+      ],
+      "q1_session_mean": 1.8,
+      "q2_mean": 2.82,
+      "miti_global_mean": 1.75,
+      "n_messages": 7,
+      "cost_usd": 0.001648,
+      "wall_s": 14.5
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "noah-smoking-resistant",
+      "session": 0,
+      "q1_turn_means": [
+        2.6,
+        2.0,
+        1.6
+      ],
+      "q1_session_mean": 2.067,
+      "q2_mean": 2.88,
+      "miti_global_mean": 2.0,
+      "n_messages": 7,
+      "cost_usd": 0.001638,
+      "wall_s": 16.1
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "emma-smoking",
+      "session": 0,
+      "q1_turn_means": [
+        3.0,
+        2.8,
+        2.0
+      ],
+      "q1_session_mean": 2.6,
+      "q2_mean": 3.18,
+      "miti_global_mean": 3.5,
+      "n_messages": 7,
+      "cost_usd": 0.001969,
+      "wall_s": 20.1
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "noah-smoking-resistant",
+      "session": 1,
+      "q1_turn_means": [
+        2.6,
+        2.4,
+        2.2
+      ],
+      "q1_session_mean": 2.4,
+      "q2_mean": 2.59,
+      "miti_global_mean": 2.25,
+      "n_messages": 7,
+      "cost_usd": 0.001732,
+      "wall_s": 17.2
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "liam-obesity",
+      "session": 0,
+      "q1_turn_means": [
+        2.6,
+        2.4,
+        2.0
+      ],
+      "q1_session_mean": 2.333,
+      "q2_mean": 3.35,
+      "miti_global_mean": 3.0,
+      "n_messages": 7,
+      "cost_usd": 0.001679,
+      "wall_s": 17.2
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "ava-obesity-eager",
+      "session": 0,
+      "q1_turn_means": [
+        3.8,
+        4.2,
+        4.2
+      ],
+      "q1_session_mean": 4.067,
+      "q2_mean": 4.29,
+      "miti_global_mean": 4.0,
+      "n_messages": 7,
+      "cost_usd": 0.001802,
+      "wall_s": 25.6
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "ava-obesity-eager",
+      "session": 1,
+      "q1_turn_means": [
+        3.8,
+        3.6,
+        2.4
+      ],
+      "q1_session_mean": 3.267,
+      "q2_mean": 3.12,
+      "miti_global_mean": 3.5,
+      "n_messages": 7,
+      "cost_usd": 0.001861,
+      "wall_s": 24.7
+    },
+    {
+      "model": "meta-llama/Llama-3.2-1B",
+      "persona": "liam-obesity",
+      "session": 1,
+      "q1_turn_means": [
+        2.4,
+        2.6,
+        2.8
+      ],
+      "q1_session_mean": 2.6,
+      "q2_mean": 3.82,
+      "miti_global_mean": 3.5,
+      "n_messages": 7,
+      "cost_usd": 0.002019,
+      "wall_s": 24.0
+    }
+  ],
+  "aggregate": {
+    "mi-coach-pto-iter10": {
+      "q1_session_mean": {
+        "mean": 3.6,
+        "std": 0.48
+      },
+      "q2_mean": {
+        "mean": 4.32,
+        "std": 0.28
+      },
+      "miti_global_mean": {
+        "mean": 4.09,
+        "std": 0.3
+      },
+      "n": 8,
+      "cost_usd": 0.0167
+    },
+    "mi-coach-grpo-iter8": {
+      "q1_session_mean": {
+        "mean": 3.77,
+        "std": 0.53
+      },
+      "q2_mean": {
+        "mean": 4.33,
+        "std": 0.38
+      },
+      "miti_global_mean": {
+        "mean": 4.34,
+        "std": 0.53
+      },
+      "n": 8,
+      "cost_usd": 0.0187
+    },
+    "meta-llama/Llama-3.2-1B": {
+      "q1_session_mean": {
+        "mean": 2.64,
+        "std": 0.72
+      },
+      "q2_mean": {
+        "mean": 3.26,
+        "std": 0.56
+      },
+      "miti_global_mean": {
+        "mean": 2.94,
+        "std": 0.83
+      },
+      "n": 8,
+      "cost_usd": 0.0143
+    }
+  },
+  "aggregate_by_persona": {
+    "mi-coach-pto-iter10|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.77,
+        "std": 0.14
+      },
+      "q2_mean": {
+        "mean": 4.32,
+        "std": 0.04
+      },
+      "miti_global_mean": {
+        "mean": 3.88,
+        "std": 0.18
+      },
+      "n": 2,
+      "cost_usd": 0.0044
+    },
+    "mi-coach-pto-iter10|noah-smoking-resistant": {
+      "q1_session_mean": {
+        "mean": 3.17,
+        "std": 0.24
+      },
+      "q2_mean": {
+        "mean": 4.14,
+        "std": 0.21
+      },
+      "miti_global_mean": {
+        "mean": 3.88,
+        "std": 0.18
+      },
+      "n": 2,
+      "cost_usd": 0.0039
+    },
+    "mi-coach-pto-iter10|ava-obesity-eager": {
+      "q1_session_mean": {
+        "mean": 4.2,
+        "std": 0.0
+      },
+      "q2_mean": {
+        "mean": 4.71,
+        "std": 0.0
+      },
+      "miti_global_mean": {
+        "mean": 4.38,
+        "std": 0.18
+      },
+      "n": 2,
+      "cost_usd": 0.0037
+    },
+    "mi-coach-pto-iter10|liam-obesity": {
+      "q1_session_mean": {
+        "mean": 3.27,
+        "std": 0.38
+      },
+      "q2_mean": {
+        "mean": 4.12,
+        "std": 0.25
+      },
+      "miti_global_mean": {
+        "mean": 4.25,
+        "std": 0.35
+      },
+      "n": 2,
+      "cost_usd": 0.0047
+    },
+    "mi-coach-grpo-iter8|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 3.7,
+        "std": 0.14
+      },
+      "q2_mean": {
+        "mean": 4.38,
+        "std": 0.13
+      },
+      "miti_global_mean": {
+        "mean": 4.5,
+        "std": 0.0
+      },
+      "n": 2,
+      "cost_usd": 0.0047
+    },
+    "mi-coach-grpo-iter8|noah-smoking-resistant": {
+      "q1_session_mean": {
+        "mean": 3.2,
+        "std": 0.57
+      },
+      "q2_mean": {
+        "mean": 3.91,
+        "std": 0.54
+      },
+      "miti_global_mean": {
+        "mean": 3.75,
+        "std": 0.0
+      },
+      "n": 2,
+      "cost_usd": 0.0048
+    },
+    "mi-coach-grpo-iter8|ava-obesity-eager": {
+      "q1_session_mean": {
+        "mean": 4.47,
+        "std": 0.0
+      },
+      "q2_mean": {
+        "mean": 4.76,
+        "std": 0.0
+      },
+      "miti_global_mean": {
+        "mean": 5.0,
+        "std": 0.0
+      },
+      "n": 2,
+      "cost_usd": 0.0048
+    },
+    "mi-coach-grpo-iter8|liam-obesity": {
+      "q1_session_mean": {
+        "mean": 3.7,
+        "std": 0.14
+      },
+      "q2_mean": {
+        "mean": 4.29,
+        "std": 0.0
+      },
+      "miti_global_mean": {
+        "mean": 4.12,
+        "std": 0.53
+      },
+      "n": 2,
+      "cost_usd": 0.0044
+    },
+    "meta-llama/Llama-3.2-1B|emma-smoking": {
+      "q1_session_mean": {
+        "mean": 2.2,
+        "std": 0.57
+      },
+      "q2_mean": {
+        "mean": 3.0,
+        "std": 0.25
+      },
+      "miti_global_mean": {
+        "mean": 2.62,
+        "std": 1.24
+      },
+      "n": 2,
+      "cost_usd": 0.0036
+    },
+    "meta-llama/Llama-3.2-1B|noah-smoking-resistant": {
+      "q1_session_mean": {
+        "mean": 2.23,
+        "std": 0.24
+      },
+      "q2_mean": {
+        "mean": 2.73,
+        "std": 0.21
+      },
+      "miti_global_mean": {
+        "mean": 2.12,
+        "std": 0.18
+      },
+      "n": 2,
+      "cost_usd": 0.0034
+    },
+    "meta-llama/Llama-3.2-1B|ava-obesity-eager": {
+      "q1_session_mean": {
+        "mean": 3.67,
+        "std": 0.57
+      },
+      "q2_mean": {
+        "mean": 3.71,
+        "std": 0.83
+      },
+      "miti_global_mean": {
+        "mean": 3.75,
+        "std": 0.35
+      },
+      "n": 2,
+      "cost_usd": 0.0037
+    },
+    "meta-llama/Llama-3.2-1B|liam-obesity": {
+      "q1_session_mean": {
+        "mean": 2.47,
+        "std": 0.19
+      },
+      "q2_mean": {
+        "mean": 3.58,
+        "std": 0.33
+      },
+      "miti_global_mean": {
+        "mean": 3.25,
+        "std": 0.35
+      },
+      "n": 2,
+      "cost_usd": 0.0037
+    }
+  },
+  "total_cost_usd": 0.0497
+}

@@ -8,17 +8,20 @@ workshop paper) served as a real, benchmarked service.
 > researchers. It is **not therapy** and must not be used as a substitute for professional
 > mental-health care.
 
-## Status — Phase 3: LangGraph agent layer
+## Status — v1.0 (all phases complete)
 
-- **Phase 1 (done):** Llama-3.2-1B + thesis LoRA adapters served via
+- **Phase 1:** Llama-3.2-1B + thesis LoRA adapters served via
   [vLLM](https://github.com/vllm-project/vllm) (OpenAI-compatible endpoint), benchmarked
   against plain HF Transformers (results below).
-- **Phase 2 (done):** FastAPI session API + Gradio practice UI (you play the patient),
+- **Phase 2:** FastAPI session API + Gradio practice UI (you play the patient),
   Dockerfile + compose.
-- **Phase 3 (this):** [LangGraph](https://github.com/langchain-ai/langgraph) agent —
+- **Phase 3:** [LangGraph](https://github.com/langchain-ai/langgraph) agent —
   every therapist turn is scored live by an LLM-as-a-Judge (gpt-4o-mini + the thesis
   questionnaires), sessions end with an MI feedback report, and an auto-demo mode runs
   a simulated patient.
+- **Phase 4:** training-iteration + multi-persona evaluations in the deployed system,
+  streaming replies, A/B compare with per-side reports, judge rationales, session
+  history/export, per-session cost tracking, advanced generation controls.
 
 ![MI Coach practice session demo](docs/demo.gif)
 
@@ -36,10 +39,13 @@ Judging uses the thesis evaluation stack (`assets/thesis/questionnaires.py`) wit
 **selectable instruments** — Q1, Q2, WAI-SR, CSQ-8, MI-SAT, MITI, PCT, MICI — chosen
 independently for the live per-turn judge (default Q1) and the end-of-session report
 (default Q2 + MITI), all via OpenAI structured outputs against the thesis JSON
-schemas — no free-text parsing. The simulated patient uses the thesis persona prompts
-(`assets/thesis/system_prompts_builder.py`). All judge/patient calls are gpt-4o-mini;
-one call per selected instrument per judged point (a default scored demo session costs
-about a cent).
+schemas — no free-text parsing. The judge can optionally attach a **one-sentence
+rationale per instrument** (separate toggles for per-turn and report judging). The
+simulated patient uses the thesis persona prompts
+(`assets/thesis/system_prompts_builder.py`). All judge/patient calls are gpt-4o-mini
+by default (selectable); one call per selected instrument per judged point, and every
+session tracks its actual token usage and cost — a default scored demo session costs
+about a cent.
 
 ## Training-iteration evaluation
 
@@ -63,6 +69,19 @@ Full per-iteration table in `eval/results/`. Honest caveats: the judge is an LLM
 sessions are short (3 patient turns) and sampled, and n=3 per checkpoint — error bars
 are wide. This reproduces the *shape* of the thesis evaluation in the deployed system;
 it is not a re-run of the thesis experiments.
+
+### Robustness across patient personas
+
+The best checkpoints were also swept over four thesis patient personas
+(`eval/run_eval.py --personas all`): different problem (smoking/obesity), age, history,
+and cooperation level — including a young resistant smoker who never tried quitting:
+
+![Judge scores by patient persona](docs/eval_personas.png)
+
+Both adapters beat the base model on **every persona and metric**; the hardest persona
+for everyone is the resistant patient, the easiest the eager one — the expected
+ordering. Full table in `eval/results/eval-personas-latest.md`; the entire 24-session
+sweep cost **$0.05** in gpt-4o-mini calls (per-session cost is tracked end-to-end).
 
 ## Setup
 
@@ -138,15 +157,24 @@ With the vLLM server running:
     *therapist* a simulated patient (thesis persona, configurable: problem, cooperation
     level, age, …) responds and **the judges score you** — that's the "coach" in MI Coach.
   - Pick the method (PTO/GRPO/base) and training iteration (thesis-best marked ★), and
-    choose which questionnaires judge live each turn vs. in the final report.
-  - Live score timeline chart; *End session → report* for per-instrument scores plus an
-    **overall assessment** (a reviewer model weighs the transcript *and* the judges'
-    scores: rating /5, strengths, growth areas, one concrete tip).
-  - **Compare (A/B) tab**: send the same patient message to two checkpoints side by side.
+    choose which questionnaires judge live each turn vs. in the final report (or none —
+    per-turn judging can be switched off entirely). Replies **stream** token by token.
+  - Live score timeline chart with optional **judge rationales**; *End session → report*
+    for per-instrument scores plus an **overall assessment** (a reviewer model weighs
+    the transcript *and* the judges' scores: rating /5, strengths, growth areas, one
+    concrete tip). Each session shows its actual OpenAI token usage and cost.
+  - **Compare (A/B) tab** with full practice parity: send the same patient message to
+    two checkpoints, or auto-demo both against the same simulated persona — per-side
+    score timelines, end-of-session reports, and a combined markdown export.
+  - **History tab**: browse every session of the server run (practice, compare, demo)
+    with transcript, scores, report, and export.
+  - **Advanced settings** (apply everywhere): therapist/patient temperatures, max
+    tokens, judge model, sampling seed, auto-demo length, rationale toggles.
   - Export any session as markdown (UI button or `GET /sessions/{id}/export`).
-- **API:** `POST /sessions` (model, your role, persona, questionnaires) →
-  `POST /sessions/{id}/message` (returns the reply + per-turn judge scores) →
-  `POST /sessions/{id}/report`; `POST /demo` runs a full simulated session.
+- **API:** `POST /sessions` (model, your role, persona, questionnaires, generation
+  `params`, rationale flags) → `POST /sessions/{id}/message` (returns the reply,
+  per-turn judge scores, cumulative usage/cost) → `POST /sessions/{id}/report`;
+  `POST /demo` runs a full simulated session; `GET /sessions` lists them.
   OpenAPI docs at `/docs`; `GET /health`.
   Sessions are in-memory (practice tool, not a clinical record store).
 - Set `OPENAI_API_KEY` (e.g. in `.env`) to enable judging; without it the app degrades

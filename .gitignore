@@ -43,3 +43,5 @@ logs/
 eval/results/*
 !eval/results/eval-latest.json
 !eval/results/eval-latest.md
+!eval/results/eval-personas-latest.json
+!eval/results/eval-personas-latest.md

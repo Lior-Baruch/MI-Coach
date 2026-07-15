@@ -1,6 +1,11 @@
 # MI Coach — flagship side project plan
 *Created 2026-07-13. Budget: a few hours/week — every phase must be shippable on its own.*
 
+**Status 2026-07-15: all four phases complete — tagged v1.0.** Shipped beyond plan:
+role toggle (judges score the human therapist), A/B compare with per-side reports,
+multi-persona eval sweep, judge rationales, streaming replies, session history/export,
+per-session cost tracking, advanced generation controls.
+
 ## Pitch (future CV bullet / README opener)
 Training-and-practice tool for Motivational Interviewing: a fine-tuned Llama-3.2-1B therapist
 (from the thesis) served with vLLM, orchestrated by a LangGraph agent that runs practice
@@ -39,9 +44,11 @@ engineering layer — the missing signal.
 - Two modes: interactive practice (human patient) and auto-demo (simulated patient).
 - Live per-turn scoring panel in the UI.
 
-### Phase 4 — Polish (~1 week)
+### Phase 4 — Polish (~1 week) — DONE 2026-07-15
 - Eval table (base vs PTO adapter, auto-demo mode, n sessions), demo video/GIF,
   architecture diagram in README, pin deps, tag v1.0.
+- Added: per-iteration eval of all 20 checkpoints (independently recovered the thesis
+  best picks PTO-10/GRPO-8) + 4-persona robustness sweep ($0.05 total judge cost).
 
 ## CV integration checkpoints
 - After Phase 1: add vLLM + benchmark bullet to Projects (replace or push down diacritization).
