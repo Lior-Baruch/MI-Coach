@@ -201,6 +201,23 @@ MODEL_ID=meta-llama/Llama-3.2-1B HF_TOKEN=... docker compose up --build
 # UI on http://localhost:8080/ui, raw vLLM endpoint on http://localhost:8000/v1
 ```
 
+## Tests
+
+A characterization suite (pytest) pins the API contract, judging, cost
+accounting, the markdown export, and the UI streaming engine. No network, no
+GPU: every model call is answered by a fake whose JSON-schema walker satisfies
+all judge schemas.
+
+```bash
+uv pip install --python .venv/bin/python -r requirements-dev.txt
+.venv/bin/python -m pytest        # 35 tests, < 15s
+```
+
+Code map: `agent/` (config → thesis bridge → judging → LangGraph graphs),
+`app/` (REST API in `main.py`, session lifecycle in `sessions.py`, rendering,
+Gradio UI in `ui/`). A guided walkthrough lives in
+[docs/CODE_TOUR.md](docs/CODE_TOUR.md).
+
 ## Benchmark
 
 ```bash

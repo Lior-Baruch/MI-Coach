@@ -8,13 +8,15 @@ for end users** (keep this disclaimer in the README).
 
 Full phase plan: `MI_Coach_Project_Plan.md` (repo root). Read it before any work.
 
-## Current phase: 3 — LangGraph agent layer
-Phases 1-2 done and pushed: vLLM serves both adapters (results table in README);
-FastAPI session API + Gradio UI + Docker compose stack verified end-to-end (demo GIF).
-Phase 3 goal: LangGraph graph — therapist node (local vLLM) → optional patient-sim node
-(gpt-4o-mini) → judge node (gpt-4o-mini + thesis questionnaires, assets/thesis/) →
-session feedback report. Two modes: interactive practice (human patient) and auto-demo
-(simulated patient). Live per-turn scoring panel in the UI.
+## Status: all 4 phases complete (v1.0 tagged; v1.1 features on main)
+vLLM serving + benchmark, FastAPI/Gradio app + Docker, LangGraph agent with
+LLM-judges (gpt-4o-mini + thesis questionnaires), iteration/persona evals.
+2026-07-20: behavior-preserving readability refactor on branch
+`refactor/readability` — agent/ split into config/thesis/judging/graph, app/
+into main/sessions/rendering/ui/, plus a pytest characterization suite
+(`.venv/bin/python -m pytest`, no network — keep it green; when moving a
+patched symbol, update `tests/patch_points.py`). Architecture guide:
+`docs/CODE_TOUR.md`.
 OpenAI budget: gpt-4o-mini only, few calls per session; OPENAI_API_KEY lives in .env.
 
 Key serving facts (learned in Phase 1): adapters trained on BASE Llama-3.2-1B;
