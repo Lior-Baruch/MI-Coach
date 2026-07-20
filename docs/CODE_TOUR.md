@@ -27,7 +27,7 @@ MI-Coach/
 │   ├── thesis/system_prompts_builder.py  # copied thesis patient-persona builder
 │   └── adapters/             # symlinks to LoRA checkpoints (gitignored)
 ├── docker-compose.yml        # vllm/vllm-openai image + app image
-└── docs/                     # demo.gif, eval charts, this file
+└── docs/                     # demo GIFs, eval charts, this file
 ```
 
 Two processes at runtime:
