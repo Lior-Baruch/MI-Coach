@@ -4,6 +4,7 @@
 import pytest
 
 from app import main as M
+from app import sessions
 
 
 def test_ui_mounted(client):
@@ -27,7 +28,7 @@ def test_merge_streams_interleaves_and_reraises():
 
 
 def test_stream_reply_finalizes_transcript(fake_clients):
-    session = M._new_session("mi-coach-pto-iter10")
+    session = sessions.new_session("mi-coach-pto-iter10")
     fake_clients.vllm.queue("Streamed reply.")
     history = [{"role": "assistant", "content": "greeting"}]
     # NOTE: _stream_reply yields the SAME list object and mutates the last
@@ -47,7 +48,7 @@ def test_stream_reply_finalizes_transcript(fake_clients):
 
 
 def test_demo_stream_event_sequence(fake_clients):
-    session = M._new_session("mi-coach-pto-iter10")
+    session = sessions.new_session("mi-coach-pto-iter10")
     events = [event for _, event in M._demo_stream(session, 1)]
     assert events[0] == "chunk"
     assert "scored" in events
@@ -55,7 +56,7 @@ def test_demo_stream_event_sequence(fake_clients):
     assert len(session["turn_scores"]) == 1
     assert "report" in session
     # patient SESSION ENDED stops before the therapist answers
-    session = M._new_session("mi-coach-pto-iter10")
+    session = sessions.new_session("mi-coach-pto-iter10")
     fake_clients.openai.queue("Thanks, that is all I needed. SESSION ENDED 2")
     list(M._demo_stream(session, 5))
     assert sum(1 for m in session["messages"] if m["role"] == "user") == 1
