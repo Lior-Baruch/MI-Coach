@@ -8,6 +8,7 @@ import pytest
 
 from agent import config as C
 from agent import graph as G
+from agent import judging as J
 from agent import thesis as T
 from tests.fakes import COST_PER_MINI_CALL
 from tests.patch_points import CUSTOM_FILE, resolve
@@ -98,7 +99,7 @@ def test_judge_named_thesis_instruments(fake_clients):
     conv = "[PATIENT]: Hi.\n\n[THERAPIST]: Hello."
     usage = C.empty_usage()
 
-    q1 = G._judge_named("Q1", conv, None, rationale=False, usage=usage)
+    q1 = J.judge_named("Q1", conv, None, rationale=False, usage=usage)
     assert q1 == {"mean": 1.0, "scores": {f"Q1_{i}": 1 for i in range(1, 6)}}
     assert usage["calls"] == 1 and usage["cost_usd"] == COST_PER_MINI_CALL
     call = fake_clients.openai.calls[-1]
@@ -106,16 +107,16 @@ def test_judge_named_thesis_instruments(fake_clients):
     assert call["model"] == "gpt-4o-mini"
     assert call["response_format"]["json_schema"]["strict"] is True
 
-    miti = G._judge_named("MITI", conv, None, rationale=False, usage=usage)
+    miti = J.judge_named("MITI", conv, None, rationale=False, usage=usage)
     assert miti["mean"] == 1.0
     assert set(miti["globals"]) == MITI_GLOBAL_LABELS
     assert set(miti["behaviors"]) == MITI_BEHAVIOR_LABELS
     assert set(miti["scores"]) == MITI_GLOBAL_LABELS | MITI_BEHAVIOR_LABELS
 
-    rationale = G._judge_named("Q1", conv, None, rationale=True, usage=usage)
+    rationale = J.judge_named("Q1", conv, None, rationale=True, usage=usage)
     assert rationale["rationale"] == "stub"
     # params override reaches the judge call
-    G._judge_named("Q1", conv, {"judge_model": "gpt-4o", "seed": 5}, usage=usage)
+    J.judge_named("Q1", conv, {"judge_model": "gpt-4o", "seed": 5}, usage=usage)
     call = fake_clients.openai.calls[-1]
     assert call["model"] == "gpt-4o" and call["seed"] == 5
 
@@ -124,24 +125,24 @@ def test_custom_questionnaire_crud_and_judging(custom_file):
     for bad_args in [("", ["s"]), ("x" * 61, ["s"]), ("Q1", ["s"]), ("Empty", []),
                      ("TooMany", ["s"] * 21)]:
         with pytest.raises(ValueError):
-            G.add_custom_questionnaire(*bad_args)
+            J.add_custom_questionnaire(*bad_args)
 
-    G.add_custom_questionnaire(" LISTEN-2 ", [" statement one ", "", "statement two"], " desc ")
-    saved = G.CUSTOM_QUESTIONNAIRES["LISTEN-2"]
+    J.add_custom_questionnaire(" LISTEN-2 ", [" statement one ", "", "statement two"], " desc ")
+    saved = J.CUSTOM_QUESTIONNAIRES["LISTEN-2"]
     assert saved == {"description": "desc", "items": ["statement one", "statement two"]}
     raw = custom_file.read_text()
     assert raw.endswith("\n") and json.loads(raw) == {"LISTEN-2": saved}
-    assert "LISTEN-2" in G.known_questionnaires()
-    assert G.questionnaire_blurbs()["LISTEN-2"] == "custom, 2 items: desc"
+    assert "LISTEN-2" in J.known_questionnaires()
+    assert J.questionnaire_blurbs()["LISTEN-2"] == "custom, 2 items: desc"
 
-    out = G._judge_named("LISTEN-2", "[PATIENT]: Hi.", None, usage=C.empty_usage())
+    out = J.judge_named("LISTEN-2", "[PATIENT]: Hi.", None, usage=C.empty_usage())
     assert out == {"mean": 1.0, "scores": {"statement one": 1, "statement two": 1}}
-    assert G._known(["Q1", "LISTEN-2", "Ghost"]) == ["Q1", "LISTEN-2"]
+    assert J.filter_known(["Q1", "LISTEN-2", "Ghost"]) == ["Q1", "LISTEN-2"]
 
-    G.delete_custom_questionnaire("LISTEN-2")
+    J.delete_custom_questionnaire("LISTEN-2")
     assert json.loads(custom_file.read_text()) == {}
     with pytest.raises(KeyError):
-        G.delete_custom_questionnaire("LISTEN-2")
+        J.delete_custom_questionnaire("LISTEN-2")
 
 
 def test_run_demo_loop_and_report(fake_clients):

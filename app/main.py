@@ -38,17 +38,9 @@ from matplotlib.figure import Figure
 
 from agent.config import DEFAULT_PARAMS, JUDGE_MODEL_CHOICES, VLLM_URL, empty_usage
 from agent.graph import (
-    CUSTOM_QUESTIONNAIRES,
-    DEFAULT_REPORT_QUESTIONNAIRES,
-    DEFAULT_TURN_QUESTIONNAIRES,
-    QUESTIONNAIRES,
-    add_custom_questionnaire,
     compare_sessions,
-    delete_custom_questionnaire,
     judge_turn,
-    known_questionnaires,
     patient_node,
-    questionnaire_blurbs,
     run_demo,
     run_patient_turn,
     run_report,
@@ -56,6 +48,16 @@ from agent.graph import (
     stream_patient,
     stream_therapist,
     therapist_node,
+)
+from agent.judging import (
+    CUSTOM_QUESTIONNAIRES,
+    DEFAULT_REPORT_QUESTIONNAIRES,
+    DEFAULT_TURN_QUESTIONNAIRES,
+    QUESTIONNAIRES,
+    add_custom_questionnaire,
+    delete_custom_questionnaire,
+    known_questionnaires,
+    questionnaire_blurbs,
 )
 from agent.thesis import GREETING, PERSONA_OPTIONS, build_patient_persona, initial_messages
 

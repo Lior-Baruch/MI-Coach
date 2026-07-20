@@ -9,8 +9,8 @@ import importlib
 
 VLLM_CLIENT = "agent.config.vllm_client"
 OPENAI_CLIENT = "agent.config.openai_client"
-CUSTOM_FILE = "agent.graph.CUSTOM_QUESTIONNAIRES_FILE"
-CUSTOM_DICT = "agent.graph.CUSTOM_QUESTIONNAIRES"
+CUSTOM_FILE = "agent.judging.CUSTOM_QUESTIONNAIRES_FILE"
+CUSTOM_DICT = "agent.judging.CUSTOM_QUESTIONNAIRES"
 SESSIONS_DICT = "app.main.SESSIONS"
 SCORING_FLAG = "app.main.SCORING_ENABLED"
 LIST_MODELS = "app.main._list_models"
