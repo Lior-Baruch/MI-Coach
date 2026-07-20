@@ -1,0 +1,4 @@
+# Dev/test tooling only — the Docker app image installs app/requirements.txt
+# and never sees this file (or tests/).
+-r app/requirements.txt
+pytest>=8
