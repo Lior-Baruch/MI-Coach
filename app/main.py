@@ -1,4 +1,4 @@
-"""MI Coach app: FastAPI session API + Gradio practice UI in one service.
+"""MI Coach app: the REST API + assembly (Gradio UI mounted at /ui).
 
 The user plays the *patient* (the served thesis model is the therapist) or the
 *therapist* (a simulated patient responds and the judges score the human).
@@ -7,7 +7,10 @@ gpt-4o-mini) via the LangGraph agent in agent/graph.py; sessions end with a
 full feedback report (Q2 + MITI + supervisor narrative). Auto-demo mode runs a
 simulated patient; the Compare tab drives two checkpoints side by side.
 
-Sessions are held in memory (practice tool, not a clinical record store).
+This module holds the Pydantic request models and the REST routes; the session
+model/lifecycle lives in app/sessions.py, markdown+plot rendering in
+app/rendering.py, and the Gradio UI in app/ui/. Sessions are held in memory
+(practice tool, not a clinical record store).
 
 Run:  .venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8080
 Env:  VLLM_URL        vLLM OpenAI endpoint   (default http://localhost:8000/v1)
@@ -58,7 +61,7 @@ def _validate_questionnaires(names: list[str]) -> list[str]:
 
 
 class AdvancedParams(BaseModel):
-    """Generation knobs; None = use the app default (agent.graph.DEFAULT_PARAMS)."""
+    """Generation knobs; None = use the app default (agent.config.DEFAULT_PARAMS)."""
     therapist_temperature: float | None = Field(default=None, ge=0, le=2)
     therapist_max_tokens: int | None = Field(default=None, ge=16, le=1024)
     patient_temperature: float | None = Field(default=None, ge=0, le=2)

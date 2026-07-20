@@ -80,7 +80,7 @@ METRICS = ("q1_session_mean", "q2_mean", "miti_global_mean")
 
 
 def aggregate(rows: list[dict]) -> dict:
-    def mstd(vals):
+    def mean_std(vals):
         vals = [v for v in vals if v is not None]
         if not vals:
             return None, None
@@ -88,14 +88,14 @@ def aggregate(rows: list[dict]) -> dict:
 
     out = {}
     for metric in METRICS:
-        mean, std = mstd([r[metric] for r in rows])
+        mean, std = mean_std([r[metric] for r in rows])
         out[metric] = {"mean": mean, "std": std}
     out["n"] = len(rows)
     out["cost_usd"] = round(sum(r.get("cost_usd", 0.0) for r in rows), 4)
     return out
 
 
-def fmt_cell(agg: dict, metric: str) -> str:
+def format_cell(agg: dict, metric: str) -> str:
     v = agg[metric]
     return f"{v['mean']} ± {v['std']}" if v["mean"] is not None else "—"
 
@@ -173,8 +173,8 @@ def main() -> None:
              "|---|---|---|---|---|---|"]
     for model in models:
         a = agg[model]
-        lines.append(f"| {model} | {fmt_cell(a, 'q1_session_mean')} | {fmt_cell(a, 'q2_mean')} "
-                     f"| {fmt_cell(a, 'miti_global_mean')} | {a['n']} | ${a['cost_usd']:.3f} |")
+        lines.append(f"| {model} | {format_cell(a, 'q1_session_mean')} | {format_cell(a, 'q2_mean')} "
+                     f"| {format_cell(a, 'miti_global_mean')} | {a['n']} | ${a['cost_usd']:.3f} |")
     if len(personas) > 1:
         lines += ["", "### By persona", "",
                   "| Checkpoint | Persona | Q1 (per-turn) | Q2 (17 items) | MITI globals | n |",
@@ -182,8 +182,8 @@ def main() -> None:
         for model in models:
             for persona in personas:
                 a = agg_mp[(model, persona)]
-                lines.append(f"| {model} | {persona} | {fmt_cell(a, 'q1_session_mean')} "
-                             f"| {fmt_cell(a, 'q2_mean')} | {fmt_cell(a, 'miti_global_mean')} | {a['n']} |")
+                lines.append(f"| {model} | {persona} | {format_cell(a, 'q1_session_mean')} "
+                             f"| {format_cell(a, 'q2_mean')} | {format_cell(a, 'miti_global_mean')} | {a['n']} |")
     lines += ["", f"*Total judge/patient-sim cost: ${total_cost} "
                   f"({len(results)} sessions, gpt-4o-mini).*"]
     table = "\n".join(lines)
