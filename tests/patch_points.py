@@ -7,8 +7,8 @@ the ONLY test change required is updating the matching constant here.
 
 import importlib
 
-VLLM_CLIENT = "agent.graph._vllm"
-OPENAI_CLIENT = "agent.graph._openai"
+VLLM_CLIENT = "agent.config.vllm_client"
+OPENAI_CLIENT = "agent.config.openai_client"
 CUSTOM_FILE = "agent.graph.CUSTOM_QUESTIONNAIRES_FILE"
 CUSTOM_DICT = "agent.graph.CUSTOM_QUESTIONNAIRES"
 SESSIONS_DICT = "app.main.SESSIONS"

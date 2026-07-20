@@ -36,21 +36,15 @@ matplotlib.use("Agg")  # server-side rendering; handlers run off the main thread
 from matplotlib import ticker
 from matplotlib.figure import Figure
 
+from agent.config import DEFAULT_PARAMS, JUDGE_MODEL_CHOICES, VLLM_URL, empty_usage
 from agent.graph import (
     CUSTOM_QUESTIONNAIRES,
-    DEFAULT_PARAMS,
     DEFAULT_REPORT_QUESTIONNAIRES,
     DEFAULT_TURN_QUESTIONNAIRES,
-    GREETING,
-    JUDGE_MODEL_CHOICES,
-    PERSONA_OPTIONS,
     QUESTIONNAIRES,
     add_custom_questionnaire,
-    build_patient_persona,
     compare_sessions,
     delete_custom_questionnaire,
-    empty_usage,
-    initial_messages,
     judge_turn,
     known_questionnaires,
     patient_node,
@@ -63,8 +57,8 @@ from agent.graph import (
     stream_therapist,
     therapist_node,
 )
+from agent.thesis import GREETING, PERSONA_OPTIONS, build_patient_persona, initial_messages
 
-VLLM_URL = os.environ.get("VLLM_URL", "http://localhost:8000/v1")
 DEFAULT_MODEL = os.environ.get("DEFAULT_MODEL", "mi-coach-pto-iter10")
 SCORING_ENABLED = bool(os.environ.get("OPENAI_API_KEY"))
 

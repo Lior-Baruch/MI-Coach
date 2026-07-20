@@ -2,7 +2,7 @@
 
 import pytest
 
-from agent.graph import GREETING
+from agent.thesis import GREETING
 from tests.fakes import COST_PER_MINI_CALL
 from tests.patch_points import LIST_MODELS
 

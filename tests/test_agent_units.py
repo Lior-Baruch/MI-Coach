@@ -6,7 +6,9 @@ import json
 
 import pytest
 
+from agent import config as C
 from agent import graph as G
+from agent import thesis as T
 from tests.fakes import COST_PER_MINI_CALL
 from tests.patch_points import CUSTOM_FILE, resolve
 from types import SimpleNamespace
@@ -24,31 +26,31 @@ MITI_BEHAVIOR_LABELS = {
 
 
 def test_usage_accounting():
-    acc = G.empty_usage()
+    acc = C.empty_usage()
     assert acc == {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
     usage = SimpleNamespace(prompt_tokens=100, completion_tokens=20)
-    G._add_usage(acc, usage, "gpt-4o-mini")
+    C.add_usage(acc, usage, "gpt-4o-mini")
     assert acc == {"calls": 1, "prompt_tokens": 100, "completion_tokens": 20,
                    "cost_usd": COST_PER_MINI_CALL}
     # unknown model falls back to gpt-4o-mini prices; None usage is a no-op
-    G._add_usage(acc, usage, "some-unknown-model")
+    C.add_usage(acc, usage, "some-unknown-model")
     assert acc["calls"] == 2
     assert acc["cost_usd"] == pytest.approx(2 * COST_PER_MINI_CALL)
-    G._add_usage(acc, None, "gpt-4o-mini")
+    C.add_usage(acc, None, "gpt-4o-mini")
     assert acc["calls"] == 2
     # cost is rounded to 6 decimals on every accumulation (tiny costs vanish)
-    tiny = G.empty_usage()
-    G._add_usage(tiny, SimpleNamespace(prompt_tokens=1, completion_tokens=0), "gpt-4o-mini")
+    tiny = C.empty_usage()
+    C.add_usage(tiny, SimpleNamespace(prompt_tokens=1, completion_tokens=0), "gpt-4o-mini")
     assert tiny["cost_usd"] == 0.0
 
 
 def test_resolve_params_and_seed_kwargs():
-    assert G.resolve_params(None) == G.DEFAULT_PARAMS
-    params = G.resolve_params({"therapist_temperature": 0.1, "seed": 7, "judge_model": None})
+    assert C.resolve_params(None) == C.DEFAULT_PARAMS
+    params = C.resolve_params({"therapist_temperature": 0.1, "seed": 7, "judge_model": None})
     assert params["therapist_temperature"] == 0.1
-    assert params["judge_model"] == G.DEFAULT_PARAMS["judge_model"]  # None never overrides
-    assert G._seed_kwargs(params) == {"seed": 7}
-    assert G._seed_kwargs(G.resolve_params(None)) == {}
+    assert params["judge_model"] == C.DEFAULT_PARAMS["judge_model"]  # None never overrides
+    assert C.seed_kwargs(params) == {"seed": 7}
+    assert C.seed_kwargs(C.resolve_params(None)) == {}
 
 
 def test_transcript_format():
@@ -57,13 +59,13 @@ def test_transcript_format():
         {"role": "assistant", "content": " Hello there. "},
         {"role": "user", "content": "Hi.\n"},
     ]
-    assert G.transcript(messages) == "[THERAPIST]: Hello there.\n\n[PATIENT]: Hi."
+    assert T.transcript(messages) == "[THERAPIST]: Hello there.\n\n[PATIENT]: Hi."
 
 
 def test_clean_reply_cuts_malformed_chatml():
-    assert G._clean_reply("Sure. <|im_end|> junk") == "Sure."
-    assert G._clean_reply("Sure. <|im_end") == "Sure."  # malformed marker
-    assert G._clean_reply("  plain reply \n") == "plain reply"
+    assert T.clean_reply("Sure. <|im_end|> junk") == "Sure."
+    assert T.clean_reply("Sure. <|im_end") == "Sure."  # malformed marker
+    assert T.clean_reply("  plain reply \n") == "plain reply"
 
 
 def test_patient_messages_role_flip():
@@ -80,13 +82,13 @@ def test_patient_messages_role_flip():
 
 
 def test_build_patient_persona_default_and_all_options():
-    default = G.default_patient_persona()
+    default = T.default_patient_persona()
     assert "Emma" in default
     assert "61 years old female" in default
     assert "smoking" in default.lower()
     prompts = set()
-    for combo in itertools.product(*G.PERSONA_OPTIONS.values()):
-        prompt = G.build_patient_persona(*combo)
+    for combo in itertools.product(*T.PERSONA_OPTIONS.values()):
+        prompt = T.build_patient_persona(*combo)
         assert 'write "SESSION ENDED"' in prompt
         prompts.add(prompt)
     assert len(prompts) == 96  # every thesis permutation yields a distinct prompt
@@ -94,7 +96,7 @@ def test_build_patient_persona_default_and_all_options():
 
 def test_judge_named_thesis_instruments(fake_clients):
     conv = "[PATIENT]: Hi.\n\n[THERAPIST]: Hello."
-    usage = G.empty_usage()
+    usage = C.empty_usage()
 
     q1 = G._judge_named("Q1", conv, None, rationale=False, usage=usage)
     assert q1 == {"mean": 1.0, "scores": {f"Q1_{i}": 1 for i in range(1, 6)}}
@@ -132,7 +134,7 @@ def test_custom_questionnaire_crud_and_judging(custom_file):
     assert "LISTEN-2" in G.known_questionnaires()
     assert G.questionnaire_blurbs()["LISTEN-2"] == "custom, 2 items: desc"
 
-    out = G._judge_named("LISTEN-2", "[PATIENT]: Hi.", None, usage=G.empty_usage())
+    out = G._judge_named("LISTEN-2", "[PATIENT]: Hi.", None, usage=C.empty_usage())
     assert out == {"mean": 1.0, "scores": {"statement one": 1, "statement two": 1}}
     assert G._known(["Q1", "LISTEN-2", "Ghost"]) == ["Q1", "LISTEN-2"]
 
@@ -181,7 +183,7 @@ def test_stream_generators(fake_clients):
     assert chunks[0] == "Hello pa"          # 8-char fake chunks
     assert chunks[-1] == "Hello patient!"   # marker cleaned even mid-stream
 
-    usage = G.empty_usage()
+    usage = C.empty_usage()
     fake_clients.openai.queue("I am okay.")
     chunks = list(G.stream_patient([{"role": "assistant", "content": "hi"}], "persona",
                                    None, usage))

@@ -1,4 +1,4 @@
-"""LangGraph agent layer for MI Coach (Phase 3).
+"""LangGraph agent layer for MI Coach: nodes, compiled graphs, entry points.
 
 Two compiled graphs over a shared session state:
 
@@ -15,100 +15,34 @@ a short narrative summary. Judge calls use OpenAI structured outputs with the
 thesis JSON schemas, so parsing is deterministic.
 
 Budget: every OpenAI call is gpt-4o-mini; a 5-turn demo session costs ~a cent.
+
+Related modules: env/params/pricing/clients live in ``agent.config``, the
+thesis-asset bridge (prompts, transcript format, personas) in ``agent.thesis``.
 """
 
-import importlib.util
 import json
-import os
 import re
-from pathlib import Path
 from typing import TypedDict
 
 from langgraph.graph import END, START, StateGraph
-from openai import OpenAI
 
-REPO = Path(__file__).resolve().parents[1]
-
-# Load repo-root .env (OPENAI_API_KEY etc.) without overriding real env vars.
-if (REPO / ".env").is_file():
-    for line in (REPO / ".env").read_text().splitlines():
-        if "=" in line and not line.lstrip().startswith("#"):
-            k, _, v = line.partition("=")
-            os.environ.setdefault(k.strip(), v.strip())
-
-
-def _load(name: str):
-    spec = importlib.util.spec_from_file_location(name, REPO / "assets" / "thesis" / f"{name}.py")
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-questionnaires = _load("questionnaires")
-prompts_builder = _load("system_prompts_builder")
-
-VLLM_URL = os.environ.get("VLLM_URL", "http://localhost:8000/v1")
-JUDGE_MODEL = os.environ.get("JUDGE_MODEL", "gpt-4o-mini")
-PATIENT_MODEL = os.environ.get("PATIENT_MODEL", "gpt-4o-mini")
-
-# Models offered for the judge in Advanced settings, with $/1M-token (input,
-# output) prices for the session cost display. gpt-4o-mini stays the default.
-JUDGE_MODEL_CHOICES = ["gpt-4o-mini", "gpt-4.1-mini", "gpt-4o"]
-_PRICES_PER_MTOK = {
-    "gpt-4o-mini": (0.15, 0.60),
-    "gpt-4.1-mini": (0.40, 1.60),
-    "gpt-4o": (2.50, 10.00),
-}
-
-# Generation knobs exposed via the API and the UI "Advanced settings" accordion.
-DEFAULT_PARAMS = {
-    "therapist_temperature": 0.7,
-    "therapist_max_tokens": 300,
-    "patient_temperature": 0.8,
-    "judge_model": JUDGE_MODEL,
-    "seed": None,  # int seeds vLLM + OpenAI calls (best-effort); None = unseeded
-}
-
-
-def resolve_params(params: dict | None) -> dict:
-    """DEFAULT_PARAMS overlaid with any non-None user overrides."""
-    return {**DEFAULT_PARAMS, **{k: v for k, v in (params or {}).items() if v is not None}}
-
-
-def _seed_kwargs(p: dict) -> dict:
-    return {"seed": int(p["seed"])} if p.get("seed") is not None else {}
-
-
-def empty_usage() -> dict:
-    return {"calls": 0, "prompt_tokens": 0, "completion_tokens": 0, "cost_usd": 0.0}
-
-
-def _add_usage(acc: dict, usage, model: str) -> dict:
-    """Accumulate one OpenAI response's token usage and $ cost into acc (in place)."""
-    if usage is not None:
-        inp, out = _PRICES_PER_MTOK.get(model, _PRICES_PER_MTOK["gpt-4o-mini"])
-        acc["calls"] += 1
-        acc["prompt_tokens"] += usage.prompt_tokens
-        acc["completion_tokens"] += usage.completion_tokens
-        acc["cost_usd"] = round(
-            acc["cost_usd"] + (usage.prompt_tokens * inp + usage.completion_tokens * out) / 1e6, 6)
-    return acc
-THERAPIST_SYSTEM_PROMPT = (REPO / "assets" / "therapist_system_prompt.txt").read_text().strip()
-GREETING = (
-    "Hello, welcome to your first motivational session with me. My name is David and "
-    "I`m a professional motivational counselor. Can you start by telling me a little "
-    "bit about yourself and why are you here?"
+from agent import config
+from agent.config import (
+    PATIENT_MODEL,
+    REPO,
+    add_usage,
+    empty_usage,
+    resolve_params,
+    seed_kwargs,
 )
-STOP = ["<|im_end|>", "<|im_start|>"]  # ChatML markers are plain text for the adapters
-
-
-def _clean_reply(text: str) -> str:
-    """Cut malformed ChatML markers (e.g. "<|im_end>") that slip past vLLM's
-    exact-match stop strings."""
-    return re.split(r"<\|im_", text)[0].strip()
-
-_vllm = OpenAI(base_url=VLLM_URL, api_key="unused")
-_openai = OpenAI()  # OPENAI_API_KEY from env
+from agent.thesis import (
+    STOP,
+    clean_reply,
+    default_patient_persona,
+    initial_messages,
+    questionnaires,
+    transcript,
+)
 
 # Selectable judge instruments (thesis questionnaires.py). Key -> (ID, blurb).
 QUESTIONNAIRES = {
@@ -216,43 +150,6 @@ def _judge_custom(name: str, conversation: str, params: dict, rationale: bool = 
     return out
 
 
-# Thesis patient-persona dimensions (system_prompts_builder.PatientPersonality).
-PERSONA_OPTIONS = {
-    "gender": ["Female", "Male"],
-    "age": [61, 27],
-    "problem": ["Smoking", "Obesity"],
-    "problem_time": ["ManyYears", "FewMonths"],
-    "tried_to_solve": ["ManyTimes", "Never"],
-    "cooperation": ["StartLowAndChangesToHigh", "High", "Low"],
-}
-
-
-def build_patient_persona(
-    gender: str = "Female",
-    age: int = 61,
-    problem: str = "Smoking",
-    problem_time: str = "ManyYears",
-    tried_to_solve: str = "ManyTimes",
-    cooperation: str = "StartLowAndChangesToHigh",
-) -> str:
-    """Build a thesis patient system prompt from named permutation choices."""
-    p = prompts_builder.PatientPersonality
-    return p.build_system_prompt(
-        gender=p.Gender[gender],
-        problem=p.Problem[problem],
-        problem_time=p.ProblemTime[problem_time],
-        tried_to_solve=p.TriedToSolve[tried_to_solve],
-        cooperation_level=p.CooperationLevel[cooperation],
-        age_value=int(age),
-    )["system_prompt"]
-
-
-def default_patient_persona() -> str:
-    """Auto-demo default: Emma, 61, long-time smoker, tried to quit before,
-    warms up as the session progresses."""
-    return build_patient_persona()
-
-
 class SessionState(TypedDict, total=False):
     messages: list[dict]          # therapist-perspective: patient=user, therapist=assistant
     model: str                    # served therapist model (adapter) name
@@ -269,17 +166,6 @@ class SessionState(TypedDict, total=False):
     openai_usage: dict            # cumulative OpenAI calls/tokens/cost (empty_usage() shape)
 
 
-def transcript(messages: list[dict]) -> str:
-    """[PATIENT]/[THERAPIST] transcript, the format the thesis judges were built for."""
-    lines = []
-    for m in messages:
-        if m["role"] == "user":
-            lines.append(f"[PATIENT]: {m['content'].strip()}")
-        elif m["role"] == "assistant":
-            lines.append(f"[THERAPIST]: {m['content'].strip()}")
-    return "\n\n".join(lines)
-
-
 def _structured_judge_call(name: str, prompt: str, schema: dict, params: dict,
                            rationale: bool = False, usage: dict | None = None) -> dict:
     """One structured-output judge call; returns the parsed JSON dict."""
@@ -292,16 +178,16 @@ def _structured_judge_call(name: str, prompt: str, schema: dict, params: dict,
         prompt += ('\n\nAlso include a top-level string field "rationale": one concise sentence '
                    "justifying your overall assessment of the therapist on this instrument.")
     model = params["judge_model"]
-    resp = _openai.chat.completions.create(
+    resp = config.openai_client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_schema", "json_schema": {
             "name": name, "strict": True, "schema": schema}},
         temperature=0,
-        **_seed_kwargs(params),
+        **seed_kwargs(params),
     )
     if usage is not None:
-        _add_usage(usage, resp.usage, model)
+        add_usage(usage, resp.usage, model)
     return json.loads(resp.choices[0].message.content)
 
 
@@ -322,15 +208,15 @@ def _judge(questionnaire_id, conversation: str, params: dict, rationale: bool = 
 
 def therapist_node(state: SessionState) -> dict:
     p = resolve_params(state.get("params"))
-    resp = _vllm.chat.completions.create(
+    resp = config.vllm_client.chat.completions.create(
         model=state["model"],
         messages=state["messages"],
         max_tokens=int(p["therapist_max_tokens"]),
         temperature=float(p["therapist_temperature"]),
         stop=STOP,
-        **_seed_kwargs(p),
+        **seed_kwargs(p),
     )
-    reply = _clean_reply(resp.choices[0].message.content)
+    reply = clean_reply(resp.choices[0].message.content)
     ended = state.get("session_ended", False) or "SESSION ENDED" in reply
     return {"messages": state["messages"] + [{"role": "assistant", "content": reply}],
             "session_ended": ended}
@@ -339,40 +225,40 @@ def therapist_node(state: SessionState) -> dict:
 def stream_therapist(messages: list[dict], model: str, params: dict | None = None):
     """Stream a therapist reply from vLLM; yields the growing text (last value is final)."""
     p = resolve_params(params)
-    stream = _vllm.chat.completions.create(
+    stream = config.vllm_client.chat.completions.create(
         model=model,
         messages=messages,
         max_tokens=int(p["therapist_max_tokens"]),
         temperature=float(p["therapist_temperature"]),
         stop=STOP,
         stream=True,
-        **_seed_kwargs(p),
+        **seed_kwargs(p),
     )
     text = ""
     for chunk in stream:
         delta = chunk.choices[0].delta.content if chunk.choices else None
         if delta:
             text += delta
-            yield _clean_reply(text)
+            yield clean_reply(text)
 
 
 def stream_patient(messages: list[dict], patient_system_prompt: str,
                    params: dict | None = None, usage: dict | None = None):
     """Stream a simulated-patient reply (OpenAI); yields the growing text."""
     p = resolve_params(params)
-    stream = _openai.chat.completions.create(
+    stream = config.openai_client.chat.completions.create(
         model=PATIENT_MODEL,
         messages=_patient_messages(messages, patient_system_prompt),
         max_tokens=300,
         temperature=float(p["patient_temperature"]),
         stream=True,
         stream_options={"include_usage": True},
-        **_seed_kwargs(p),
+        **seed_kwargs(p),
     )
     text = ""
     for chunk in stream:
         if usage is not None and chunk.usage is not None:
-            _add_usage(usage, chunk.usage, PATIENT_MODEL)
+            add_usage(usage, chunk.usage, PATIENT_MODEL)
         delta = chunk.choices[0].delta.content if chunk.choices else None
         if delta:
             text += delta
@@ -432,14 +318,14 @@ def patient_node(state: SessionState) -> dict:
     """Simulated patient turn (auto-demo / human-therapist mode)."""
     p = resolve_params(state.get("params"))
     usage = dict(state.get("openai_usage") or empty_usage())
-    resp = _openai.chat.completions.create(
+    resp = config.openai_client.chat.completions.create(
         model=PATIENT_MODEL,
         messages=_patient_messages(state["messages"], state["patient_system_prompt"]),
         max_tokens=300,
         temperature=float(p["patient_temperature"]),
-        **_seed_kwargs(p),
+        **seed_kwargs(p),
     )
-    _add_usage(usage, resp.usage, PATIENT_MODEL)
+    add_usage(usage, resp.usage, PATIENT_MODEL)
     reply = resp.choices[0].message.content.strip()
     ended = state.get("session_ended", False) or "SESSION ENDED" in reply
     return {"messages": state["messages"] + [{"role": "user", "content": reply}],
@@ -482,7 +368,7 @@ def report_node(state: SessionState) -> dict:
     per_turn = [t["means"] for t in state.get("turn_scores", [])]
     score_lines = _report_score_lines(results)
     # Overall assessment: a reviewer pass over the transcript AND the judges' outputs.
-    resp = _openai.chat.completions.create(
+    resp = config.openai_client.chat.completions.create(
         model=p["judge_model"],
         messages=[{"role": "user", "content":
             "You are a senior MI (Motivational Interviewing) supervisor reviewing a practice "
@@ -495,9 +381,9 @@ def report_node(state: SessionState) -> dict:
             "name": "mi_overall_assessment", "strict": True, "schema": _ASSESSMENT_SCHEMA}},
         max_tokens=600,
         temperature=0.3,
-        **_seed_kwargs(p),
+        **seed_kwargs(p),
     )
-    _add_usage(usage, resp.usage, p["judge_model"])
+    add_usage(usage, resp.usage, p["judge_model"])
     assessment = json.loads(resp.choices[0].message.content)
     return {"report": {
         "results": results,
@@ -558,17 +444,17 @@ def compare_sessions(model_a: str, messages_a: list[dict], report_a: dict | None
         f"{side('B', model_b, messages_b, report_b)}"
     )
     model = p["judge_model"]
-    resp = _openai.chat.completions.create(
+    resp = config.openai_client.chat.completions.create(
         model=model,
         messages=[{"role": "user", "content": prompt}],
         response_format={"type": "json_schema", "json_schema": {
             "name": "mi_ab_comparison", "strict": True, "schema": _COMPARISON_SCHEMA}},
         max_tokens=800,
         temperature=0.3,
-        **_seed_kwargs(p),
+        **seed_kwargs(p),
     )
     if usage is not None:
-        _add_usage(usage, resp.usage, model)
+        add_usage(usage, resp.usage, model)
     return json.loads(resp.choices[0].message.content)
 
 
@@ -620,13 +506,6 @@ def build_demo_graph():
 turn_graph = build_turn_graph()
 patient_turn_graph = build_patient_turn_graph()
 demo_graph = build_demo_graph()
-
-
-def initial_messages() -> list[dict]:
-    return [
-        {"role": "system", "content": THERAPIST_SYSTEM_PROMPT},
-        {"role": "assistant", "content": GREETING},
-    ]
 
 
 def run_turn(

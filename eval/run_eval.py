@@ -34,7 +34,8 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(REPO))
 
-from agent.graph import build_patient_persona, run_demo  # noqa: E402
+from agent.graph import run_demo  # noqa: E402
+from agent.thesis import build_patient_persona  # noqa: E402
 
 TURN_QS = ["Q1"]
 REPORT_QS = ["Q2", "MITI"]
